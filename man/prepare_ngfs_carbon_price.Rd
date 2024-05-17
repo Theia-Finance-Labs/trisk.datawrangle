@@ -3,7 +3,7 @@
 \name{prepare_ngfs_carbon_price}
 \alias{prepare_ngfs_carbon_price}
 \title{This function reads carbon price data sourced from the NGFS scenario selector
-tool and prepares it for use in the r2dii.climate.stress.test package. Gaps
+tool and prepares it for use in the trisk.model package. Gaps
 between years are interpolated.}
 \usage{
 prepare_ngfs_carbon_price(data, start_year)
@@ -17,7 +17,7 @@ year of the prepared ngfs price data set}
 }
 \description{
 This function reads carbon price data sourced from the NGFS scenario selector
-tool and prepares it for use in the r2dii.climate.stress.test package. Gaps
+tool and prepares it for use in the trisk.model package. Gaps
 between years are interpolated.
 }
 \seealso{

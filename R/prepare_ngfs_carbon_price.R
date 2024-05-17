@@ -1,5 +1,5 @@
 #' This function reads carbon price data sourced from the NGFS scenario selector
-#' tool and prepares it for use in the r2dii.climate.stress.test package. Gaps
+#' tool and prepares it for use in the trisk.model package. Gaps
 #' between years are interpolated.
 #'
 #' @param data Tibble that contains the raw ngfs scenario carbon price data file

@@ -19,7 +19,7 @@ knitr::opts_chunk$set(
 <h1>
   ST input dataframes structure
   <span style="float: left;">
-    <a href='https://github.com/2DegreesInvesting/r2dii.climate.stress.test'>
+    <a href='https://github.com/2DegreesInvesting/trisk.model'>
       <img src='https://cinea.ec.europa.eu/sites/default/files/styles/oe_theme_medium_no_crop/public/2021-01/life_1.jpg?itok=J1KQ12Nw' align='right' style="height: 43px; padding-right: 10px;" />
       <img src='https://imgur.com/A5ASZPE.png' align='right' style="height: 43px;" />
     </a>
@@ -35,9 +35,9 @@ TRISK input dataframes follow this structure :
 ![](man/figures/outputs_diagram.jpg)
 
 
-# STDataMGMT
+# trisk.datawrangle
 
-The goal of STDataMGMT is to provide the input data required for the
+The goal of trisk.datawrangle is to provide the input data required for the
 stress test that cannot be shared as part of a public repository. The
 2DII stress test needs several external data inputs that usually require
 a license which prohibits redistributing the data. 2DII does not have
@@ -111,10 +111,10 @@ The underlying logic of the data preparation is the following quintet:
   - ald_location
 - columns:
   - company_id: id of the company
-  - ald_sector: sector of the asset (ex: Power, Oil&Gas.. ) see `STDataMgmt::production_types$ald_sector` for all possible values
-  - ald_business_unit: business unit of the asset (ex: RenewablesCap, OilCap) see `STDataMgmt::production_types$ald_business_unit` for all possible values.
+  - ald_sector: sector of the asset (ex: Power, Oil&Gas.. ) see `trisk.datawrangle::production_types$ald_sector` for all possible values
+  - ald_business_unit: business unit of the asset (ex: RenewablesCap, OilCap) see `trisk.datawrangle::production_types$ald_business_unit` for all possible values.
   - ald_location: country where is located the asset, in ISO2c format
-  - activity_unit: unit of the production (ex: MW, GJ, ...) see `STDataMgmt::production_types$ald_production_unit` for all possible values.
+  - activity_unit: unit of the production (ex: MW, GJ, ...) see `trisk.datawrangle::production_types$ald_production_unit` for all possible values.
   - Equity Ownership YYYY : amount of production for a given year. 1 column per year.
 
 ### DB_company_emissions.parquet 
@@ -129,10 +129,10 @@ The underlying logic of the data preparation is the following quintet:
   - ald_location
 - columns:
   - company_id: id of the company
-  - ald_sector: sector of the asset (ex: Power, Oil&Gas.. ) see `STDataMgmt::production_types$ald_sector` for all possible values
-  - ald_business_unit: business unit of the asset (ex: RenewablesCap, OilCap) see `STDataMgmt::production_types$ald_business_unit` for all possible values.
+  - ald_sector: sector of the asset (ex: Power, Oil&Gas.. ) see `trisk.datawrangle::production_types$ald_sector` for all possible values
+  - ald_business_unit: business unit of the asset (ex: RenewablesCap, OilCap) see `trisk.datawrangle::production_types$ald_business_unit` for all possible values.
   - ald_location: country where is located the asset, in ISO2c format
-  - activity_unit: unit of the production (ex: tCO2, tCO2e) see `STDataMgmt::production_types$emissions_factor_unit` for all possible values.
+  - activity_unit: unit of the production (ex: tCO2, tCO2e) see `trisk.datawrangle::production_types$emissions_factor_unit` for all possible values.
   - Equity Ownership YYYY : amount of emissions for a given year. 1 column per year.
 
 ### DB_ownership_tree.parquet 
@@ -207,7 +207,7 @@ The underlying logic of the data preparation is the following quintet:
 ### Preparation of scenario data
 
 In order to get the scenario data into the required format as defined in
-`r2dii.climate.stress.test`, the function `prepare_scenario_data()`
+`trisk.model`, the function `prepare_scenario_data()`
 assumes that input in the format of data found on the dropbox under
 ***Processed Data*** is available. The input argument should point to a
 corresponding file. The start year of the scenario file must be defined,
@@ -238,13 +238,13 @@ technology, year.
 
 The function `prepare_prewrangled_capacity_factors_WEOYYYY()` reads in
 raw power generation and capacity data and wrangles that data into the
-required format for usage in `r2dii.climate.stress.test`. It uses input
+required format for usage in `trisk.model`. It uses input
 files that are to be found on the dropbpox under **Raw_Data**, under
 `WEOYYYY_Raw_Data.csv`, with YYYY being the year of the release of the
 report.The user furthermore has to set a start year and an end year of
 the preparation time frame. The start year should correspond with the
 year of publication and the end year should be the same as the one used
-in `r2dii.climate.stress.test`.
+in `trisk.model`.
 
 Beside wrangling the data into the expected format in terms of pivoting
 and renaming columns, the function will linearly interpolate missing

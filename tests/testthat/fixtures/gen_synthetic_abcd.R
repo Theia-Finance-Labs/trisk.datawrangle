@@ -2,7 +2,7 @@ box::use(
   fixtures/  synthetic_file_paths[synth_fp]
 )
 
-library(STDataMGMT)
+library(trisk.datawrangle)
 
 company_activities <- arrow::read_parquet(synth_fp$company_activities)
 company_emissions <- arrow::read_parquet(synth_fp$company_emissions)
@@ -18,10 +18,10 @@ sector_list <- c("Automotive", "Power", "Oil&Gas", "Coal")
 km_per_vehicle <- 15000
 
 abcd_stress_test_input <-
-  STDataMGMT::prepare_abcd_data(
+  trisk.datawrangle::prepare_abcd_data(
     company_activities = company_activities,
     company_emissions = company_emissions,
-    scenarios_geographies = STDataMGMT::scenarios_geographies,
+    scenarios_geographies = trisk.datawrangle::scenarios_geographies,
     start_year = start_year,
     time_horizon = time_horizon,
     additional_year = additional_year,

@@ -15,7 +15,7 @@ knitr::opts_chunk$set(
 ```
 
 ```{r setup}
-library(STDataMGMT)
+library(trisk.datawrangle)
 library(dplyr)
 ```
 
@@ -70,7 +70,7 @@ DB_company_emissions <- outputs_list[["company_emissions"]]
 
 ## Prepare raw Asset Impact
 ```{r include=FALSE}
-company_informations <- STDataMGMT:::read_asset_resolution(
+company_informations <- trisk.datawrangle:::read_asset_resolution(
   path_ar_data_raw,
   sheet_name = "Company Information")
 
@@ -84,7 +84,7 @@ company_informations %>%
 # THE FILTERING HAPPENS HERE ****************************
 
 DB_company_activities <- DB_company_activities %>%
-  STDataMGMT:::filter_countries_coverage(
+  trisk.datawrangle:::filter_countries_coverage(
     company_informations = company_informations,
     country_filter = country_filter,
     filter_hqs = filter_hqs,
@@ -92,7 +92,7 @@ DB_company_activities <- DB_company_activities %>%
   )
 
 DB_company_emissions <- DB_company_emissions %>%
-  STDataMGMT:::filter_countries_coverage(
+  trisk.datawrangle:::filter_countries_coverage(
     company_informations = company_informations,
     country_filter = country_filter,
     filter_hqs = filter_hqs,
@@ -145,7 +145,7 @@ abcd_stress_test_input <-
   prepare_abcd_data(
     company_activities = DB_company_activities,
     company_emissions = DB_company_emissions,
-    scenarios_geographies = STDataMGMT::scenarios_geographies, # loaded from package
+    scenarios_geographies = trisk.datawrangle::scenarios_geographies, # loaded from package
     start_year = start_year,
     time_horizon = time_horizon,
     additional_year = additional_year,

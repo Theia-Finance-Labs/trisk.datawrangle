@@ -19,7 +19,7 @@ Run the script `tests/testthat/fixtures/synthetic_file_paths.R` to generate all 
 ```{r setup}
 library(dplyr)
 library(tibble)
-library(STDataMGMT)
+library(trisk.datawrangle)
 ```
 
 # ===================================
@@ -30,8 +30,8 @@ library(STDataMGMT)
 ```{r, eval=FALSE}
 
 
-company_activities <- STDataMGMT::synthetic_company_activities
-company_emissions <- STDataMGMT::synthetic_company_emissions
+company_activities <- trisk.datawrangle::synthetic_company_activities
+company_emissions <- trisk.datawrangle::synthetic_company_emissions
 
 start_year <- 2020
 time_horizon <- 10
@@ -40,10 +40,10 @@ sector_list <- c("Automotive", "Power", "Oil&Gas", "Coal")
 km_per_vehicle <- 15000
 
 abcd_stress_test_input <-
-  STDataMGMT::prepare_abcd_data(
+  trisk.datawrangle::prepare_abcd_data(
     company_activities = company_activities,
     company_emissions = company_emissions,
-    scenarios_geographies = STDataMGMT::scenarios_geographies,
+    scenarios_geographies = trisk.datawrangle::scenarios_geographies,
     start_year = start_year,
     time_horizon = time_horizon,
     additional_year = additional_year,
@@ -62,13 +62,13 @@ print(abcd_stress_test_input)
 
 ```{r, eval=FALSE}
 
-company_activities <- STDataMGMT::synthetic_company_activities
-eikon_data <- STDataMGMT::synthetic_eikon_data
+company_activities <- trisk.datawrangle::synthetic_company_activities
+eikon_data <- trisk.datawrangle::synthetic_eikon_data
 
 
 companies_data <- company_activities |> dplyr::distinct(company_id, ald_sector, ald_location)
 
-prewrangled_financial_data_stress_test <- STDataMGMT::prepare_financial_data(
+prewrangled_financial_data_stress_test <- trisk.datawrangle::prepare_financial_data(
   financial_data = eikon_data,
   companies_data = companies_data,
   ownership_tree = NULL,

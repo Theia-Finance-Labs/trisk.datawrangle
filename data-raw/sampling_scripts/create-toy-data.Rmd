@@ -15,7 +15,7 @@ knitr::opts_chunk$set(
 ```
 
 ```{r setup, echo=FALSE}
-library(STDataMGMT)
+library(trisk.datawrangle)
 library(dplyr)
 library(gt)
 library(ggplot2)

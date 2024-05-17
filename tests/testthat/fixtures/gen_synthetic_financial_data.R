@@ -3,7 +3,7 @@ box::use(
   fixtures/ synthetic_file_paths[synth_fp],
 )
 
-library(STDataMGMT)
+library(trisk.datawrangle)
 
 get_path_to_root_from_test
 company_activities <- arrow::read_parquet(synth_fp$company_activities)

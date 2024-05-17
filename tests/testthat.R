@@ -1,4 +1,4 @@
 library(testthat)
-library(STDataMGMT)
+library(trisk.datawrangle)
 
-test_check("STDataMGMT")
+test_check("trisk.datawrangle")

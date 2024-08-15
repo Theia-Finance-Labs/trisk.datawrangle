@@ -105,7 +105,7 @@ prewrangled_capacity_factors <- readr::read_csv(file.path(st_input_folder, "prew
 
 # ASSETS DATA
 
-assets_data <- dplyr::inner_join(abcd_stress_test_input, prewrangled_financial_data_stress_test, by=c("company_id"))
+assets_data <- abcd_stress_test_input
 # Assuming 'assets_data' is your dataframe
 
 # Create the missing columns and initialize with the appropriate values
@@ -128,15 +128,13 @@ assets_data$production_unit <- assets_data$ald_production_unit
 # Drop the old columns that have been replaced
 assets_data <- assets_data[, !names(assets_data) %in% c("year", "ald_production_unit", "plan_emission_factor",
                                                         "ald_business_unit", "ald_sector", "plan_tech_prod",
-                                                        "emissions_factor_unit", "net_profit_margin_rawdata_ratio",
-                                                        "debt_equity_ratio_rawdata_ratio", "volatility_rawdata_ratio")]
+                                                        "emissions_factor_unit")]
 # List of expected columns after renaming
 expected_columns <- c(
   "asset_id", "asset_name", "company_id", "company_name", "country_iso2",
   "country_name", "plant_age_years", "workforce_size", "technology", "sector",
   "capacity", "production_unit", "production_year", "capacity_factor",
-  "emission_factor", "pd", "debt_equity_ratio", "net_profit_margin",
-  "volatility", "scenario_geography", "plan_sec_prod"
+  "emission_factor","scenario_geography", "plan_sec_prod"
 )
 
 # Check if the dataframe has the expected columns
@@ -163,6 +161,12 @@ scenarios_data$price_unit <- scenarios_data$unit
 scenarios_data$pathway_unit <- scenarios_data$units
 scenarios_data$scenario_capacity_factor <- scenarios_data$capacity_factor
 scenarios_data$technology_type <- scenarios_data$direction
+
+scenarios_data <- scenarios_data %>% dplyr::mutate(
+  technology_type = dplyr::if_else(technology_type == "declining", "carbontech", "greentech"),
+  scenario_capacity_factor = dplyr::if_else(is.na(scenario_capacity_factor), 1, scenario_capacity_factor),
+  scenario_type = dplyr::if_else(scenario_type == "shock", "target", scenario_type)
+)
 
 # Create the missing columns and initialize with NA or the appropriate values
 scenarios_data$scenario_pathway <- scenarios_data$indicator    # Copy from 'indicator'

@@ -38,6 +38,7 @@ scenario_data <- readr::read_csv(
   fs::path(st_input_folder, "Scenarios_AnalysisInput.csv"))
 
 scenario_price <- scenario_data %>%
+
   dplyr::inner_join(
     df_price,
     by = c("scenario", "ald_sector", "ald_business_unit", "year"),
@@ -227,7 +228,7 @@ readr::read_csv(file.path(st_input_folder, "ngfs_carbon_price.csv")) %>%
   trisk_input_dir <- here::here("data-raw", "st_inputs")
 }
 
-scenario_geography_x_ald_sector <- r2dii.climate.stress.test::get_scenario_geography_x_ald_sector(
+scenario_geography_x_ald_sector <- trisk.model::get_scenario_geography_x_ald_sector(
   trisk_input_dir) |>
   dplyr::distinct(.data$baseline_scenario, .data$shock_scenario, .data$scenario_geography)
 
@@ -236,7 +237,7 @@ for (i in 1:nrow(scenario_geography_x_ald_sector)) {
   row_params <- scenario_geography_x_ald_sector[i, ]
   tryCatch({
     suppressWarnings(suppressMessages(capture.output(
-      r2dii.climate.stress.test::run_trisk(
+      trisk.model::run_trisk(
         input_path = trisk_input_dir,
         output_path = tempdir(),
         baseline_scenario = row_params$baseline_scenario,

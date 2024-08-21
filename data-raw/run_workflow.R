@@ -30,14 +30,14 @@ rm(list = ls()[ls() != "start_year"])
 
 st_input_folder <- here::here("data-raw", "st_inputs") # TODO USE IN ALL OTHER SCRIPTS
 
-capacity_factors_power <- r2dii.climate.stress.test:::read_capacity_factors_power(
-  r2dii.climate.stress.test:::capacity_factor_file(st_input_folder))
-df_price <- r2dii.climate.stress.test:::read_price_data(
-  r2dii.climate.stress.test:::price_data_file(st_input_folder))
-scenario_data = r2dii.climate.stress.test:::read_scenario_data(
-  r2dii.climate.stress.test:::scenario_data_file(st_input_folder))
+capacity_factors_power <- readr::read_csv(
+  fs::path(st_input_folder, "prewrangled_capacity_factors.csv"))
+df_price <- readr::read_csv(
+  fs::path(st_input_folder, "price_data_long.csv")) %>% dplyr::select(-c(scenario_geography))
+scenario_data <- readr::read_csv(
+  fs::path(st_input_folder, "Scenarios_AnalysisInput.csv"))
 
-scenario_price <- scenario_data %>% 
+scenario_price <- scenario_data %>%
   dplyr::inner_join(
     df_price,
     by = c("scenario", "ald_sector", "ald_business_unit", "year"),
@@ -51,22 +51,22 @@ scenario_price_power_not_in_capfac <- scenario_price_power %>%
     by = c("scenario_geography", "scenario", "ald_business_unit"))
 
 # remove from the scenarios+geographies which ones are not complete on all dataframes
-available_scenario_geographies <- 
-  scenario_price %>% 
+available_scenario_geographies <-
+  scenario_price %>%
   dplyr::distinct(scenario, scenario_geography) %>%
   dplyr::anti_join(
-    scenario_price_power_not_in_capfac %>% 
+    scenario_price_power_not_in_capfac %>%
     dplyr::distinct(scenario, scenario_geography)
     )
 
 
-readr::read_csv(file.path(st_input_folder, "Scenarios_AnalysisInput.csv")) %>% 
+readr::read_csv(file.path(st_input_folder, "Scenarios_AnalysisInput.csv")) %>%
   dplyr::inner_join(available_scenario_geographies) %>%
   readr::write_csv(file.path(st_input_folder, "Scenarios_AnalysisInput.csv"))
-readr::read_csv(file.path(st_input_folder, "price_data_long.csv")) %>% 
+readr::read_csv(file.path(st_input_folder, "price_data_long.csv")) %>%
   dplyr::inner_join(available_scenario_geographies %>% dplyr::distinct(scenario)) %>%
   readr::write_csv(file.path(st_input_folder, "price_data_long.csv"))
-readr::read_csv(file.path(st_input_folder, "prewrangled_capacity_factors.csv"))  %>% 
+readr::read_csv(file.path(st_input_folder, "prewrangled_capacity_factors.csv"))  %>%
   dplyr::inner_join(available_scenario_geographies %>% dplyr::distinct(scenario)) %>%
   readr::write_csv(file.path(st_input_folder, "prewrangled_capacity_factors.csv"))
 
@@ -74,14 +74,14 @@ readr::read_csv(file.path(st_input_folder, "prewrangled_capacity_factors.csv")) 
 
 # CLOSED SOURCE DATA
 
-# used only in run_prepare_abcd_stress_test_input.R 
-# but kept in environment until end of script 
+# used only in run_prepare_abcd_stress_test_input.R
+# but kept in environment until end of script
 # countrycode::codelist %>%
 #   filter(country.name.en == "Slobakia") %>%
 #   dplyr::pull(.data$ecb)
-country_filter <- c() 
+country_filter <- c()
 
-# those 2 are deleted from the environment after the run_prepare_abcd_stress_test_input.R 
+# those 2 are deleted from the environment after the run_prepare_abcd_stress_test_input.R
 filter_hqs <- FALSE
 filter_assets <- FALSE
 
@@ -92,6 +92,110 @@ rm(list = ls()[ls() != c("country_filter", "start_year", "st_input_folder")])
 print("=================== RUNNING run_prepare_prewrangled_financial_data_stress_test ===================")
 source(fs::path("data-raw", "run_prepare_prewrangled_financial_data_stress_test.R"))
 rm(list = ls()[ls() != c("country_filter", "start_year", "st_input_folder")])
+
+
+# ===== TRANSFORM INPUTS STRUCTURE FOR TRISK V2
+
+
+Scenarios_AnalysisInput <- readr::read_csv(file.path(st_input_folder, "Scenarios_AnalysisInput.csv"))
+abcd_stress_test_input <- readr::read_csv(file.path(st_input_folder, "abcd_stress_test_input.csv"))
+prewrangled_financial_data_stress_test <- readr::read_csv(file.path(st_input_folder, "prewrangled_financial_data_stress_test.csv"))
+price_data_long <- readr::read_csv(file.path(st_input_folder, "price_data_long.csv"))
+prewrangled_capacity_factors <- readr::read_csv(file.path(st_input_folder, "prewrangled_capacity_factors.csv"))
+
+# ASSETS DATA
+
+assets_data <- abcd_stress_test_input
+# Assuming 'assets_data' is your dataframe
+
+# Create the missing columns and initialize with the appropriate values
+assets_data$country_iso2 <- NA                          # Initialize with NA
+assets_data$country_name <- NA                          # Initialize with NA
+assets_data$plant_age_years <- NA                       # Initialize with NA
+assets_data$workforce_size <- NA                        # Initialize with NA
+
+# Rename the existing columns according to the mappings
+assets_data$asset_id <- assets_data$company_id
+assets_data$asset_name <- assets_data$company_name
+assets_data$production_year <- assets_data$year
+assets_data$emission_factor <- assets_data$plan_emission_factor
+assets_data$technology <- assets_data$ald_business_unit
+assets_data$sector <- assets_data$ald_sector
+assets_data$capacity <- assets_data$plan_tech_prod
+assets_data$capacity_factor <- 1  # Always set to 1
+assets_data$production_unit <- assets_data$ald_production_unit
+
+# Drop the old columns that have been replaced
+assets_data <- assets_data[, !names(assets_data) %in% c("year", "ald_production_unit", "plan_emission_factor",
+                                                        "ald_business_unit", "ald_sector", "plan_tech_prod",
+                                                        "emissions_factor_unit")]
+# List of expected columns after renaming
+expected_columns <- c(
+  "asset_id", "asset_name", "company_id", "company_name", "country_iso2",
+  "country_name", "plant_age_years", "workforce_size", "technology", "sector",
+  "capacity", "production_unit", "production_year", "capacity_factor",
+  "emission_factor","scenario_geography", "plan_sec_prod"
+)
+
+# Check if the dataframe has the expected columns
+actual_columns <- names(assets_data)
+
+stopifnot(all(expected_columns %in% names(assets_data)) && length(names(assets_data)) == length(expected_columns))
+
+# SCENARIOS DATA
+
+scenarios_data <- Scenarios_AnalysisInput %>%
+  dplyr::left_join(prewrangled_capacity_factors,
+                   by=c("scenario_geography", "scenario","ald_business_unit", "year")) %>%
+  dplyr::inner_join(price_data_long %>% dplyr::select(-c(scenario_geography)), by=c("scenario", "ald_sector",
+                                          "ald_business_unit", "year") )
+
+
+
+# Rename the existing columns according to the mappings
+scenarios_data$sector <- scenarios_data$ald_sector
+scenarios_data$technology <- scenarios_data$ald_business_unit
+scenarios_data$scenario_year <- scenarios_data$year
+scenarios_data$scenario_price <- scenarios_data$price
+scenarios_data$price_unit <- scenarios_data$unit
+scenarios_data$pathway_unit <- scenarios_data$units
+scenarios_data$scenario_capacity_factor <- scenarios_data$capacity_factor
+scenarios_data$technology_type <- scenarios_data$direction
+
+scenarios_data <- scenarios_data %>% dplyr::mutate(
+  technology_type = dplyr::if_else(technology_type == "declining", "carbontech", "greentech"),
+  scenario_capacity_factor = dplyr::if_else(is.na(scenario_capacity_factor), 1, scenario_capacity_factor),
+  scenario_type = dplyr::if_else(scenario_type == "shock", "target", scenario_type)
+)
+
+# Create the missing columns and initialize with NA or the appropriate values
+scenarios_data$capacity_factor_unit <- NA                      # Initialize with NA
+scenarios_data$price_indicator <- NA                           # Initialize with NA (missing in the provided data)
+scenarios_data$fair_share_perc <- scenarios_data$fair_share_perc  # No renaming needed
+
+# Drop the old columns that have been replaced
+scenarios_data <- scenarios_data[, !names(scenarios_data) %in% c("ald_sector", "ald_business_unit", "year", "price", "unit", "units", "capacity_factor", "direction", "indicator")]
+
+# List of expected columns after renaming
+expected_columns <- c(
+  "scenario", "scenario_type", "scenario_geography", "sector", "technology",
+  "scenario_year", "price_unit", "price_indicator", "scenario_price",
+  "pathway_unit", "scenario_pathway", "capacity_factor_unit",
+  "scenario_capacity_factor", "technology_type", "fair_share_perc"
+)
+
+# Check if the dataframe has the expected columns
+actual_columns <- names(scenarios_data)
+
+stopifnot(all(expected_columns %in% names(scenarios_data)) && length(names(scenarios_data)) == length(expected_columns))
+
+# WRITE V2 DATA
+
+st_inputs_v2_path <- fs::path("data-raw", "st_inputs_v2")
+fs::dir_create(st_inputs_v2_path)
+
+scenarios_data %>% readr::write_csv(fs::path(st_inputs_v2_path, "scenarios_data.csv"))
+assets_data %>% readr::write_csv(fs::path(st_inputs_v2_path, "assets_data.csv"))
 
 # ===== TEST TRISK ON ALL COMBINATIONS OF SCENARIO/GEOGRAPHY
 
@@ -117,7 +221,7 @@ if (USE_MOCK_CLOSED_SOURCE){
 readr::read_csv(file.path(st_input_folder, "ngfs_carbon_price.csv")) %>%
   readr::write_csv(file.path(trisk_input_dir, "ngfs_carbon_price.csv"))
 
-    
+
 
 } else {
   trisk_input_dir <- here::here("data-raw", "st_inputs")
@@ -187,7 +291,7 @@ readr::read_csv(file.path(st_input_folder, "ngfs_carbon_price.csv")) %>%
 
 # ===== SAVE TO DROPBOX
 
-# RUN THE ABCD SAMPLING SCRIPT FIRST IF THE DATA IS UPLOADED TO THE APP (data-raw/sampling_scripts/sample_abcd_input.Rmd) 
+# RUN THE ABCD SAMPLING SCRIPT FIRST IF THE DATA IS UPLOADED TO THE APP (data-raw/sampling_scripts/sample_abcd_input.Rmd)
 
 # Save data to dropbox only if no filter applied
 if (length(country_filter) == 0) {
@@ -199,11 +303,11 @@ if (length(country_filter) == 0) {
     "price_data_long.csv",
     "ngfs_carbon_price.csv"
     )){
-    
+
     readr::write_csv(
       readr::read_csv(here::here("data-raw", "st_inputs", fp)),
       r2dii.utils::path_dropbox_2dii(fs::path("ST Inputs", "ST_INPUTS_MASTER", fp))
     )
-    
+
   }
-} 
+}

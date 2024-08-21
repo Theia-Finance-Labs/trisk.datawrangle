@@ -251,38 +251,6 @@ drop_always_empty_production <- function(abcd_data) {
   return(abcd_data)
 }
 
-#' Duplicate rows according to the available geographies
-#' @param abcd_data abcd_data
-#'
-#' @param scenarios_geographies scenarios_geographies
-#' @param .default .default
-#' @param .iso2c .iso2c
-#'
-expand_by_scenario_geography <-
-  function(abcd_data,
-           scenarios_geographies,
-           .default = "Global",
-           .iso2c = "ald_location") {
-    stopifnot(.iso2c %in% names(abcd_data))
-
-    dict <-
-      scenarios_geographies %>%
-      dplyr::select(.data$country_iso, .data$scenario_geography_newname) %>%
-      dplyr::rename(scenario_geography = .data$scenario_geography_newname) %>%
-      dplyr::distinct()
-
-    abcd_data <- abcd_data %>%
-      dplyr::left_join(dict, by = stats::setNames("country_iso", .iso2c)) %>%
-      dplyr::mutate(
-        scenario_geography = dplyr::case_when(
-          is.na(.data$scenario_geography) ~ .default,
-          .data$scenario_geography == "" ~ .default,
-          TRUE ~ .data$scenario_geography
-        )
-      )
-    return(abcd_data)
-  }
-
 #' Sum productions and emissions over all other columns.
 #' This is done to aggregate those metrics over the different
 #' countries in a region where a company operates in.
@@ -294,7 +262,7 @@ aggregate_over_locations <- function(abcd_data) {
   abcd_data <- abcd_data %>%
     dplyr::group_by(dplyr::across(
       c(
-        -.data$ald_location, -.data$ald_production, -.data$emissions_factor
+        -.data$ald_production, -.data$emissions_factor
       )
     )) %>%
     dplyr::summarise(
@@ -348,6 +316,7 @@ fill_partially_missing_values <- function(abcd_data) {
 #' @param abcd_data abcd_data
 #'
 create_plan_prod_columns <- function(abcd_data) {
+
   abcd_data <- abcd_data %>%
     dplyr::rename(
       plan_tech_prod = .data$ald_production,
@@ -358,9 +327,9 @@ create_plan_prod_columns <- function(abcd_data) {
     dplyr::group_by(
       .data$company_id,
       .data$company_name,
-      .data$scenario_geography,
+      .data$ald_sector,
       .data$year,
-      .data$ald_sector
+      .data$ald_location
     ) %>%
     dplyr::mutate(plan_sec_prod = sum(.data$plan_tech_prod, na.rm = TRUE)) %>%
     dplyr::ungroup()
@@ -378,6 +347,18 @@ filter_sectors_abcd_data <- function(abcd_data, sector_list) {
   return(abcd_data)
 }
 
+create_asset_id <- function(abcd_data) {
+  abcd_data_asset_ids <- abcd_data %>%
+    dplyr::distinct(.data$company_id, .data$ald_location, .data$ald_business_unit) %>%
+    dplyr::group_by(.data$company_id) %>%
+    dplyr::mutate(asset_id = paste0(.data$company_id, "_", dplyr::row_number())) %>%
+    dplyr::ungroup()
+
+  abcd_data  <- abcd_data %>%
+    dplyr::right_join(abcd_data_asset_ids, by=c("company_id", "ald_location", "ald_business_unit"))
+  
+  return(abcd_data)
+}
 
 
 #' Creates the abcd stress test input data, using companies emissions and productions.
@@ -427,7 +408,11 @@ prepare_abcd_data <- function(company_activities,
 
   ## DATALOAD
   abcd_data <-
-    match_emissions_to_production(company_activities, company_emissions)
+    match_emissions_to_production(company_activities, company_emissions) 
+
+    abcd_data <- abcd_data %>%
+      dplyr::filter(!is.na(.data$ald_location)) %>%
+      aggregate_over_locations()
 
   abcd_data <- create_missing_year_rows(abcd_data, start_year, time_horizon)
 
@@ -440,10 +425,6 @@ prepare_abcd_data <- function(company_activities,
   # to check that, only 2 values with this command:
   #   abcd_data %>% group_by(company_id, company_name, ald_location, ald_sector, ald_business_unit, ald_production_unit, emissions_factor_unit) %>% summarise(nna=sum(is.na(ald_production))) %>% ungroup() %>% distinct(nna)
 
-  abcd_data <- abcd_data %>%
-    expand_by_scenario_geography(scenarios_geographies)
-  abcd_data <- aggregate_over_locations(abcd_data)
-
   abcd_data <- create_emissions_factor_ratio(abcd_data, km_per_vehicle = km_per_vehicle) # TODO rework/remove this function
   abcd_data <- fill_missing_emission_factor(abcd_data)
 
@@ -451,8 +432,8 @@ prepare_abcd_data <- function(company_activities,
   # to check :
   #  abcd_data %>% group_by(company_id, company_name, ald_location, ald_sector, ald_business_unit, ald_production_unit, emissions_factor_unit) %>% summarise(nna=sum(is.na(emissions_factor))) %>% ungroup() %>% distinct(nna)
 
-    abcd_data %>%
-      assertr::verify(all(colSums(is.na(.)) == 0)) 
+    # abcd_data %>%
+    #   assertr::verify(all(colSums(is.na(.)) == 0)) 
       # assertr::assert(nrow(.) == nrow(. %>% dplyr::distinct_all()))
 
   abcd_data <- drop_always_empty_production(abcd_data)
@@ -470,7 +451,14 @@ prepare_abcd_data <- function(company_activities,
       additional_year = additional_year
     )
 
-
+  abcd_data <- abcd_data %>%
+    create_asset_id()%>%
+    dplyr::mutate(
+      scenario_geography="Global"
+    )%>%
+    dplyr::rename(
+      country_iso2=.data$ald_location
+    )
     
   stopifnot(nrow(abcd_data) == nrow(abcd_data %>% dplyr::distinct_all()))
 

@@ -46,7 +46,7 @@ vignettes/*.pdf
 Desktop.ini
 *.icloud
 .Rproj.user
-STDataMGMT.Rproj
+trisk.datawrangle.Rproj
 inst/doc
 data-raw/DBs
 data-raw/st_inputs/*.csv
@@ -56,3 +56,4 @@ data-raw/synthetic_inputs
 /Meta/
 data-raw/datalake_inputs/*
 data-raw/financial_data_oldinputs/*
+data-raw/st_inputs_v2/*

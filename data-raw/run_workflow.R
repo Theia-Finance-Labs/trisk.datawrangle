@@ -96,6 +96,7 @@ rm(list = ls()[ls() != c("country_filter", "start_year", "st_input_folder")])
 
 
 # ===== TRANSFORM INPUTS STRUCTURE FOR TRISK V2
+ st_input_folder <- here::here("data-raw", "st_inputs") # TODO USE IN ALL OTHER SCRIPTS
 
 
 Scenarios_AnalysisInput <- readr::read_csv(file.path(st_input_folder, "Scenarios_AnalysisInput.csv"))
@@ -110,13 +111,12 @@ assets_data <- abcd_stress_test_input
 # Assuming 'assets_data' is your dataframe
 
 # Create the missing columns and initialize with the appropriate values
-assets_data$country_iso2 <- NA                          # Initialize with NA
 assets_data$country_name <- NA                          # Initialize with NA
 assets_data$plant_age_years <- NA                       # Initialize with NA
 assets_data$workforce_size <- NA                        # Initialize with NA
 
 # Rename the existing columns according to the mappings
-assets_data$asset_id <- assets_data$company_id
+
 assets_data$asset_name <- assets_data$company_name
 assets_data$production_year <- assets_data$year
 assets_data$emission_factor <- assets_data$plan_emission_factor
@@ -172,17 +172,16 @@ scenarios_data <- scenarios_data %>% dplyr::mutate(
 # Create the missing columns and initialize with NA or the appropriate values
 scenarios_data$capacity_factor_unit <- NA                      # Initialize with NA
 scenarios_data$price_indicator <- NA                           # Initialize with NA (missing in the provided data)
-scenarios_data$fair_share_perc <- scenarios_data$fair_share_perc  # No renaming needed
 
 # Drop the old columns that have been replaced
-scenarios_data <- scenarios_data[, !names(scenarios_data) %in% c("ald_sector", "ald_business_unit", "year", "price", "unit", "units", "capacity_factor", "direction", "indicator")]
+scenarios_data <- scenarios_data[, !names(scenarios_data) %in% c("fair_share_perc","ald_sector", "ald_business_unit", "year", "price", "unit", "units", "capacity_factor", "direction", "indicator")]
 
 # List of expected columns after renaming
 expected_columns <- c(
   "scenario", "scenario_type", "scenario_geography", "sector", "technology",
   "scenario_year", "price_unit", "price_indicator", "scenario_price",
   "pathway_unit", "scenario_pathway", "capacity_factor_unit",
-  "scenario_capacity_factor", "technology_type", "fair_share_perc"
+  "scenario_capacity_factor", "technology_type"
 )
 
 # Check if the dataframe has the expected columns
@@ -195,9 +194,15 @@ stopifnot(all(expected_columns %in% names(scenarios_data)) && length(names(scena
 st_inputs_v2_path <- fs::path("data-raw", "st_inputs_v2")
 fs::dir_create(st_inputs_v2_path)
 
-scenarios_data %>% readr::write_csv(fs::path(st_inputs_v2_path, "scenarios_data.csv"))
-assets_data %>% readr::write_csv(fs::path(st_inputs_v2_path, "assets_data.csv"))
-
+scenarios_data %>% readr::write_csv(fs::path(st_inputs_v2_path, "scenarios.csv"))
+assets_data %>% readr::write_csv(fs::path(st_inputs_v2_path, "assets.csv"))
+#financial_features.csv
+prewrangled_financial_data_stress_test %>% 
+  dplyr::select(company_id, pd, net_profit_margin, debt_equity_ratio, volatility) %>% 
+  readr::write_csv(fs::path(st_inputs_v2_path, "financial_features.csv"))
+#ngfs_carbon_price.csv
+readr::read_csv(fs::path(st_input_folder, "ngfs_carbon_price.csv")) %>%
+readr::write_csv(fs::path(st_inputs_v2_path, "ngfs_carbon_price.csv"))
 # ===== TEST TRISK ON ALL COMBINATIONS OF SCENARIO/GEOGRAPHY
 
 USE_MOCK_CLOSED_SOURCE <- TRUE

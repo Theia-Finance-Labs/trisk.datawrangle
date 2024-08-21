@@ -137,7 +137,7 @@ format_p4i <- function(data, green_techs) {
 
   check_crucial_names(data, crucial_names)
 
-    data %>%
+  data %>%
    dplyr::mutate(Sub_Technology = NA) %>% # this column should be dropped from PACTA
    dplyr::mutate(
     Direction = dplyr::if_else(.data$technology %in% .env$green_techs, "increasing", "declining"),
@@ -152,6 +152,7 @@ format_p4i <- function(data, green_techs) {
       Indicator = .data$indicator,
       Units = .data$units,
       Year = .data$year,
+      scenario_pathway=.data$value,
       techFSRatio = .data$tmsr,
       mktFSRatio = .data$smsp,
       .data$Direction,
@@ -317,7 +318,7 @@ prepare_scenario_data_weo23 <- function(data) {
 prepare_scenario_data_weo23 <- function(data) {
   data_has_expected_columns <- all(
     c(
-      "Source", "Technology", "ScenarioGeography", "Sector", "Units",
+      "Source", "Technology", "ScenarioGeography", "Sector", "Units", "scenario_pathway",
       "Indicator", "Scenario", "Sub_Technology", "Year", "Direction", "mktFSRatio", "techFSRatio",
       "FairSharePerc"
     ) %in% colnames(data)
@@ -352,7 +353,7 @@ prepare_scenario_data_weo23 <- function(data) {
     dplyr::relocate(
       .data$scenario_source, .data$scenario_geography, .data$scenario,
       .data$ald_sector, .data$units, .data$technology, .data$year,
-      .data$direction, .data$fair_share_perc
+      .data$direction, .data$fair_share_perc, .data$scenario_pathway
     ) %>%
     dplyr::mutate(
       scenario = stringr::str_c(.data$scenario_source, .data$scenario, sep = "_")

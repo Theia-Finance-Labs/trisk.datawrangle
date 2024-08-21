@@ -169,7 +169,6 @@ scenarios_data <- scenarios_data %>% dplyr::mutate(
 )
 
 # Create the missing columns and initialize with NA or the appropriate values
-scenarios_data$scenario_pathway <- scenarios_data$indicator    # Copy from 'indicator'
 scenarios_data$capacity_factor_unit <- NA                      # Initialize with NA
 scenarios_data$price_indicator <- NA                           # Initialize with NA (missing in the provided data)
 scenarios_data$fair_share_perc <- scenarios_data$fair_share_perc  # No renaming needed

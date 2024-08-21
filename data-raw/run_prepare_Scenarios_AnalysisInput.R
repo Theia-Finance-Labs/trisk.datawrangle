@@ -208,7 +208,7 @@ preprepared_ngfs_data <- preprepared_ngfs_data %>%
 
 input_path <- fs::path(
   "data-raw",
-   "scenario_analysis_input_data",
+  "scenario_analysis_input_data",
   "ipr2023_Scenarios_AnalysisInput.csv"
 )
 

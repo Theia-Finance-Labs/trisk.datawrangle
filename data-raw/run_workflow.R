@@ -117,6 +117,13 @@ assets_data$workforce_size <- NA                        # Initialize with NA
 
 # Rename the existing columns according to the mappings
 
+if (!("asset_id"  %in% names(assets_data))){
+    assets_data$asset_id = assets_data$company_id
+}
+if ("scenario_geography" %in% names(assets_data)){
+  assets_data <- assets_data |> dplyr::filter(scenario_geography == "Global")
+  assets_data$country_iso2  <- NA
+}
 assets_data$asset_name <- assets_data$company_name
 assets_data$production_year <- assets_data$year
 assets_data$emission_factor <- assets_data$plan_emission_factor
@@ -195,10 +202,10 @@ st_inputs_v2_path <- fs::path("data-raw", "st_inputs_v2")
 fs::dir_create(st_inputs_v2_path)
 
 scenarios_data %>% readr::write_csv(fs::path(st_inputs_v2_path, "scenarios.csv"))
-assets_data %>% readr::write_csv(fs::path(st_inputs_v2_path, "assets.csv"))
+assets_data |> readr::write_csv(fs::path(st_inputs_v2_path, "assets.csv"))
 #financial_features.csv
-prewrangled_financial_data_stress_test %>% 
-  dplyr::select(company_id, pd, net_profit_margin, debt_equity_ratio, volatility) %>% 
+prewrangled_financial_data_stress_test |>
+  dplyr::select(company_id, pd, net_profit_margin, debt_equity_ratio, volatility) |>
   readr::write_csv(fs::path(st_inputs_v2_path, "financial_features.csv"))
 #ngfs_carbon_price.csv
 readr::read_csv(fs::path(st_input_folder, "ngfs_carbon_price.csv")) %>%

@@ -82,7 +82,6 @@ output_path_stress_test_input <-
 time_horizon <- 5
 additional_year <- NULL
 sector_list <- c("Automotive", "Power", "Oil&Gas", "Coal", "Steel")
-km_per_vehicle <- 15000
 # parameters ========================================
 
 abcd_stress_test_input <-
@@ -93,7 +92,6 @@ abcd_stress_test_input <-
     start_year = start_year,
     time_horizon = time_horizon,
     additional_year = additional_year,
-    km_per_vehicle = km_per_vehicle,
     sector_list = sector_list
   )
 

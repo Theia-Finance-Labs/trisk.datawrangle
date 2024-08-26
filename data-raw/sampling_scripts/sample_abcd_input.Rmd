@@ -240,7 +240,6 @@ start_year <- 2022
 time_horizon <- 5
 additional_year <- NULL
 sector_list <- c("Automotive", "Power", "Oil&Gas", "Coal")
-km_per_vehicle <- 15000
 
 DB_company_activities  <-   arrow::read_parquet(here::here("data-raw","DBs","DB_company_activities.parquet")) %>%
   inner_join(sample_selection)
@@ -255,7 +254,6 @@ abcd_stress_test_input <-
     start_year = start_year,
     time_horizon = time_horizon,
     additional_year = additional_year,
-    km_per_vehicle = km_per_vehicle,
     sector_list = sector_list
   )
 

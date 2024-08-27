@@ -210,6 +210,18 @@ prewrangled_financial_data_stress_test |>
 #ngfs_carbon_price.csv
 readr::read_csv(fs::path(st_input_folder, "ngfs_carbon_price.csv")) %>%
 readr::write_csv(fs::path(st_inputs_v2_path, "ngfs_carbon_price.csv"))
+
+
+
+
+# ********************* TRISK V1 BELOW *********************
+
+
+
+
+
+
+
 # ===== TEST TRISK ON ALL COMBINATIONS OF SCENARIO/GEOGRAPHY
 
 USE_MOCK_CLOSED_SOURCE <- TRUE

@@ -171,24 +171,9 @@ fill_missing_emission_factor <- function(abcd_data) {
 #' convert EF from tCO2 (or tCO2e) to the ratio of tCO2 (or tCO2e) over production
 #'
 #' @param abcd_data abcd_data
-#' @param km_per_vehicle  It appears that AR data assumes that vehicles will
-#'    drive 15000 km to compute the CO2/km emission factor
-#'    TODO check if this is true on every vehicle ald_business_unit
 #'
-create_emissions_factor_ratio <- function(abcd_data, km_per_vehicle) {
-  abcd_data <- abcd_data %>% dplyr::mutate(
-    ald_production = dplyr::if_else(
-      .data$ald_production_unit == "# vehicles",
-      .data$ald_production * km_per_vehicle,
-      .data$ald_production
-    ),
-    ald_production_unit = dplyr::if_else(
-      .data$ald_production_unit == "# vehicles",
-      "km",
-      .data$ald_production_unit
-    )
-  )
-
+create_emissions_factor_ratio <- function(abcd_data) {
+  
   abcd_data <-
     abcd_data %>% dplyr::mutate(
       emissions_factor = .data$emissions_factor / .data$ald_production,
@@ -373,8 +358,6 @@ create_asset_id <- function(abcd_data) {
 #' @param start_year start_year
 #' @param time_horizon time_horizon
 #' @param additional_year list of years to add to the year range
-#' @param km_per_vehicle the number of km associated to the production of 1 vehicle,
-#'    used to convert the emissions from TCO2/# vehicles to TCO2/km
 #' @param sector_list sector_list
 #'
 #' @return companies production matched to the appropriate emission, 1 row per year and scenario geography
@@ -385,7 +368,6 @@ prepare_abcd_data <- function(company_activities,
                               start_year,
                               time_horizon,
                               additional_year,
-                              km_per_vehicle,
                               sector_list) {
   # TODO CHECK THAT IF A PRODUCTION IS IN MW IT IS ALSO IN MWh
   
@@ -425,7 +407,7 @@ prepare_abcd_data <- function(company_activities,
   # to check that, only 2 values with this command:
   #   abcd_data %>% group_by(company_id, company_name, ald_location, ald_sector, ald_business_unit, ald_production_unit, emissions_factor_unit) %>% summarise(nna=sum(is.na(ald_production))) %>% ungroup() %>% distinct(nna)
 
-  abcd_data <- create_emissions_factor_ratio(abcd_data, km_per_vehicle = km_per_vehicle) # TODO rework/remove this function
+  abcd_data <- create_emissions_factor_ratio(abcd_data) # TODO rework/remove this function
   abcd_data <- fill_missing_emission_factor(abcd_data)
 
   # nans in emission_factor only on all years of a given thech (same as above)

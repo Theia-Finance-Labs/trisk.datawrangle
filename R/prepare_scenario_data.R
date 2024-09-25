@@ -255,58 +255,6 @@ prepare_scenario_data <- function(data) {
   return(data)
 }
 
-#' WEO2023 preparation
-#' 2023 vintage has only global data
-#'
-#' @param data data
-prepare_scenario_data_weo23 <- function(data) {
-  data_has_expected_columns <- all(
-    c(
-      "Source", "Technology", "ScenarioGeography", "Sector", "Units",
-      "Indicator", "Scenario", "Sub_Technology", "Year", "Direction", "mktFSRatio", "techFSRatio",
-      "FairSharePerc"
-    ) %in% colnames(data)
-  )
-  
-  stopifnot(data_has_expected_columns)
-  
-  data <- data %>%
-    dplyr::filter(
-      (stringr::str_detect(.data$Source, "WEO2023") & .data$Indicator %in% c("Capacity", "Total energy supply")
-      )) %>%
-    dplyr::select(
-      -c(
-        .data$Sub_Technology, .data$Indicator, .data$mktFSRatio, .data$techFSRatio
-      )
-    ) %>%
-    dplyr::rename(
-      scenario_source = .data$Source,
-      scenario_geography = .data$ScenarioGeography,
-      scenario = .data$Scenario,
-      ald_sector = .data$Sector,
-      units = .data$Units,
-      technology = .data$Technology,
-      year = .data$Year,
-      direction = .data$Direction,
-      fair_share_perc = .data$FairSharePerc
-    ) %>%
-    dplyr::relocate(
-      .data$scenario_source, .data$scenario_geography, .data$scenario,
-      .data$ald_sector, .data$units, .data$technology, .data$year,
-      .data$direction, .data$fair_share_perc
-    ) %>%
-    dplyr::mutate(
-      scenario = stringr::str_c(.data$scenario_source, .data$scenario, sep = "_")
-    ) %>%
-    dplyr::distinct_all()
-  
-  # We use Only Global Region for now so no more wrangling needed
-  
-  data <- data %>%
-    dplyr::select(-.data$scenario_source)
-  
-  return(data)
-}
 
 #' Scenario processing for weo23
 #' This script takes preprocessed data from weo23 and wrangles it
@@ -418,6 +366,7 @@ prepare_geco2023 <- function(data) {
   data <- data %>%
     dplyr::select(-.data$scenario_source) %>%
     dplyr::mutate(scenario_geography = ifelse(.data$scenario_geography == "World", "Global", .data$scenario_geography))
+    
 }
 
 
@@ -658,16 +607,16 @@ prepare_IPR_scenario_data2023 <- function(data, start_year) {
   data <- data %>%
     dplyr::mutate(
       direction = dplyr::if_else(.data$technology %in% green_techs, "increasing", "declining"),
-      fair_share_perc = dplyr::if_else(.data$direction == "declining", .data$tmsr, .data$smsp),
-      tmsr = NULL,
-      smsp = NULL,
-      value = NULL
+      fair_share_perc = dplyr::if_else(.data$direction == "declining", .data$tmsr, .data$smsp)
     )
 
   data <- data[, c(
     "scenario_geography", "scenario", "ald_sector", "technology", "units", "year",
-    "direction", "fair_share_perc"
-  )]
+    "direction", "fair_share_perc", "value"
+  )] %>%
+  dplyr::rename(
+    scenario_pathway=.data$value
+  )
 
   #limiting time horizon for IPR automotive until 2041, this is the maximum data we currently have from
   #the GECO2021 scenarios
@@ -959,7 +908,8 @@ prepare_steel_scenario_data <- function(data, start_year, max_year=2050) {
   
   # Select and rearrange columns
   data <- data %>%
-    dplyr::select(.data$scenario_geography, .data$scenario, .data$ald_sector, .data$technology, .data$units, .data$year, .data$direction, .data$fair_share_perc)
+    dplyr::select(.data$scenario_geography, .data$scenario, .data$ald_sector, .data$technology, .data$units, .data$year, .data$direction, .data$fair_share_perc, .data$value) %>%
+    dplyr::rename(scenario_pathway=.data$value)
   
   # Rename scenarios
   data <- data %>%

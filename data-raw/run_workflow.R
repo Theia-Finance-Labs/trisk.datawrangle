@@ -107,7 +107,8 @@ prewrangled_capacity_factors <- readr::read_csv(file.path(st_input_folder, "prew
 
 # ASSETS DATA
 
-assets_data <- abcd_stress_test_input
+assets_data <- abcd_stress_test_input %>%
+  dplyr::select(-c(scenario_geography))
 # Assuming 'assets_data' is your dataframe
 
 # Create the missing columns and initialize with the appropriate values
@@ -121,7 +122,8 @@ if (!("asset_id"  %in% names(assets_data))){
     assets_data$asset_id = assets_data$company_id
 }
 if ("scenario_geography" %in% names(assets_data)){
-  assets_data <- assets_data |> dplyr::filter(scenario_geography == "Global")
+  assets_data <- assets_data |> 
+    dplyr::filter(scenario_geography == "Global")
   assets_data$country_iso2  <- NA
 }
 assets_data$asset_name <- assets_data$company_name

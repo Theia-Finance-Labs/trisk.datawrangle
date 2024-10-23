@@ -104,6 +104,7 @@ abcd_stress_test_input <- readr::read_csv(file.path(st_input_folder, "abcd_stres
 prewrangled_financial_data_stress_test <- readr::read_csv(file.path(st_input_folder, "prewrangled_financial_data_stress_test.csv"))
 price_data_long <- readr::read_csv(file.path(st_input_folder, "price_data_long.csv"))
 prewrangled_capacity_factors <- readr::read_csv(file.path(st_input_folder, "prewrangled_capacity_factors.csv"))
+bench_regions <- readr::read_rds("data-raw/bench_regions.rds")
 
 # ASSETS DATA
 
@@ -131,35 +132,66 @@ assets_data$production_year <- assets_data$year
 assets_data$emission_factor <- assets_data$plan_emission_factor
 assets_data$technology <- assets_data$ald_business_unit
 assets_data$sector <- assets_data$ald_sector
-assets_data$capacity <- assets_data$plan_tech_prod
-assets_data$capacity_factor <- 1  # Always set to 1
 assets_data$production_unit <- assets_data$ald_production_unit
+
+# Creates capacity factor
+ assets_data <- assets_data |> 
+  dplyr::inner_join(
+    assets_data |>select_at(c(
+        "asset_id",  
+        "production_year",
+        "plan_tech_prod" )) |> 
+        group_by_at(c("asset_id")) |> 
+        mutate(capacity_factor = plan_tech_prod/max(plan_tech_prod), capacity=max(plan_tech_prod))
+        ) %>%
+        ungroup() 
+
+# capfac_data <- assets_data %>%
+#   select(asset_id, production_year, capacity_factor) %>%
+#   mutate(source="asset_impact")
+  
+# assets_data <- assets_data %>% 
+#   select(-c(capacity_factor, production_year))
+  
 
 # Drop the old columns that have been replaced
 assets_data <- assets_data[, !names(assets_data) %in% c("year", "ald_production_unit", "plan_emission_factor",
                                                         "ald_business_unit", "ald_sector", "plan_tech_prod",
-                                                        "emissions_factor_unit")]
+                                                        "emissions_factor_unit", "plan_sec_prod")]
 # List of expected columns after renaming
 expected_columns <- c(
   "asset_id", "asset_name", "company_id", "company_name", "country_iso2",
   "country_name", "plant_age_years", "workforce_size", "technology", "sector",
-  "capacity", "production_unit", "production_year", "capacity_factor",
-  "emission_factor","scenario_geography", "plan_sec_prod"
+  "capacity", "production_year", "capacity_factor", "production_unit", "emission_factor"
 )
 
 # Check if the dataframe has the expected columns
 actual_columns <- names(assets_data)
 
 stopifnot(all(expected_columns %in% names(assets_data)) && length(names(assets_data)) == length(expected_columns))
+assets_data <- assets_data %>% select_at(expected_columns)
+# dim_assets <- assets_data %>%
+#       select_at(actual_columns) %>%
+#       distinct_all()
 
 # SCENARIOS DATA
+bench_regions_agg <- bench_regions  |>
+  dplyr::group_by(.data$scenario_geography_newname) |>
+  dplyr::summarise(country_iso2_list = sapply(list(unique(.data$country_iso)), function(x) paste(x, collapse = ","))) %>%
+   filter(scenario_geography_newname != "Global")
 
 scenarios_data <- Scenarios_AnalysisInput %>%
   dplyr::left_join(prewrangled_capacity_factors,
                    by=c("scenario_geography", "scenario","ald_business_unit", "year")) %>%
-  dplyr::inner_join(price_data_long %>% dplyr::select(-c(scenario_geography)), by=c("scenario", "ald_sector",
-                                          "ald_business_unit", "year") )
-
+  dplyr::inner_join(
+    price_data_long %>% dplyr::select(-c(scenario_geography)), 
+    by=c("scenario", "ald_sector", "ald_business_unit", "year") ) |>
+  dplyr::left_join(
+    bench_regions_agg, 
+    by=c("scenario_geography"="scenario_geography_newname"))
+  
+scenarios_data <- scenarios_data %>%
+  filter(!is.null(country_iso2_list) | !(is.null(country_iso2_list) & (scenario_geography=="Global")))
 
 
 # Rename the existing columns according to the mappings
@@ -169,34 +201,42 @@ scenarios_data$scenario_year <- scenarios_data$year
 scenarios_data$scenario_price <- scenarios_data$price
 scenarios_data$price_unit <- scenarios_data$unit
 scenarios_data$pathway_unit <- scenarios_data$units
-scenarios_data$scenario_capacity_factor <- scenarios_data$capacity_factor
+
 scenarios_data$technology_type <- scenarios_data$direction
+
+  # 2. Apply capacity factors
+  hours_to_year <- 24 * 365
+scenarios_data <- scenarios_data %>% dplyr::mutate(
+  scenario_pathway = ifelse(.data$sector == "Power",
+    .data$scenario_pathway * .data$capacity_factor * .env$hours_to_year,
+    .data$scenario_pathway * .data$capacity_factor
+  )
+)
 
 scenarios_data <- scenarios_data %>% dplyr::mutate(
   technology_type = dplyr::if_else(technology_type == "declining", "carbontech", "greentech"),
-  scenario_capacity_factor = dplyr::if_else(is.na(scenario_capacity_factor), 1, scenario_capacity_factor),
   scenario_type = dplyr::if_else(scenario_type == "shock", "target", scenario_type)
 )
 
 # Create the missing columns and initialize with NA or the appropriate values
-scenarios_data$capacity_factor_unit <- NA                      # Initialize with NA
 scenarios_data$price_indicator <- NA                           # Initialize with NA (missing in the provided data)
 
 # Drop the old columns that have been replaced
-scenarios_data <- scenarios_data[, !names(scenarios_data) %in% c("fair_share_perc","ald_sector", "ald_business_unit", "year", "price", "unit", "units", "capacity_factor", "direction", "indicator")]
+scenarios_data <- scenarios_data[, !names(scenarios_data) %in% c("fair_share_perc","ald_sector", "ald_business_unit", "year", "price", "unit", "units", "capacity_factor", "direction", "indicator", "scenario_capacity_factor", "capacity_factor_unit")]
 
 # List of expected columns after renaming
 expected_columns <- c(
   "scenario", "scenario_type", "scenario_geography", "sector", "technology",
   "scenario_year", "price_unit", "price_indicator", "scenario_price",
-  "pathway_unit", "scenario_pathway", "capacity_factor_unit",
-  "scenario_capacity_factor", "technology_type"
+  "pathway_unit", "scenario_pathway", "technology_type", "country_iso2_list"
 )
 
 # Check if the dataframe has the expected columns
 actual_columns <- names(scenarios_data)
 
 stopifnot(all(expected_columns %in% names(scenarios_data)) && length(names(scenarios_data)) == length(expected_columns))
+
+scenarios_data <- scenarios_data %>% select_at(expected_columns)
 
 # WRITE V2 DATA
 

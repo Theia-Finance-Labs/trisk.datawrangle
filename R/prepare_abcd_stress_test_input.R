@@ -188,24 +188,6 @@ create_emissions_factor_ratio <- function(abcd_data) {
       )
     )
 
-  # match the MW production to tCO2/MWh emissions
-  # TODO Why forcing the use of MW for prod and tCO2/MWh while we can do all MW or all MWh ?
-  abcd_MW_prod <- abcd_data %>%
-    dplyr::filter(.data$ald_production_unit == "MW") %>%
-    dplyr::select(-.data$emissions_factor_unit, -.data$emissions_factor)%>% 
-    dplyr::distinct_all()
-  abcd_MWh_emissions <- abcd_data %>%
-    dplyr::filter(.data$ald_production_unit == "MWh") %>%
-    dplyr::select(-.data$ald_production_unit, -.data$ald_production)%>% 
-    dplyr::distinct_all()
-  abcd_MW_prod_MWh_emissions <-
-    dplyr::inner_join(abcd_MW_prod, abcd_MWh_emissions)
-  abcd_data <- dplyr::bind_rows(
-    abcd_data %>%
-      dplyr::filter(!.data$ald_production_unit %in% c("MW", "MWh")),
-    abcd_MW_prod_MWh_emissions
-  )
-
   return(abcd_data)
 }
 
@@ -296,32 +278,6 @@ fill_partially_missing_values <- function(abcd_data) {
 
 
 
-#' rename columns, and sum ald_production over each company to create
-#' plan_sec_prod column
-#' @param abcd_data abcd_data
-#'
-create_plan_prod_columns <- function(abcd_data) {
-
-  abcd_data <- abcd_data %>%
-    dplyr::rename(
-      plan_tech_prod = .data$ald_production,
-      plan_emission_factor = .data$emissions_factor
-    )
-
-  abcd_data <- abcd_data %>%
-    dplyr::group_by(
-      .data$company_id,
-      .data$company_name,
-      .data$ald_sector,
-      .data$year,
-      .data$ald_location
-    ) %>%
-    dplyr::mutate(plan_sec_prod = sum(.data$plan_tech_prod, na.rm = TRUE)) %>%
-    dplyr::ungroup()
-
-  return(abcd_data)
-}
-
 #' Filter dataframe to keep only desired sectors
 #' @param abcd_data abcd_data
 #' @param sector_list list of sectors to keep
@@ -390,7 +346,8 @@ prepare_abcd_data <- function(company_activities,
 
   ## DATALOAD
   abcd_data <-
-    match_emissions_to_production(company_activities, company_emissions) 
+    match_emissions_to_production(company_activities, company_emissions) %>%
+    dplyr::filter(!(.data$ald_production_unit == "MW"))
 
     abcd_data <- abcd_data %>%
       dplyr::filter(!is.na(.data$ald_location)) %>%
@@ -420,7 +377,11 @@ prepare_abcd_data <- function(company_activities,
 
   abcd_data <- drop_always_empty_production(abcd_data)
 
-  abcd_data <- create_plan_prod_columns(abcd_data)
+  abcd_data <- abcd_data %>%
+    dplyr::rename(
+      plan_tech_prod = .data$ald_production,
+      plan_emission_factor = .data$emissions_factor
+    )
 
   ## FILTERINGS
   abcd_data <-

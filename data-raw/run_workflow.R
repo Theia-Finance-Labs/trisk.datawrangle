@@ -213,6 +213,11 @@ scenarios_data <- scenarios_data %>% dplyr::mutate(
   )
 )
 
+# add scenario provider column
+ scenarios_data <- scenarios_data |>
+    dplyr::mutate(scenario_provider = stringr::str_extract(scenario, "^[^_]+"))
+
+
 scenarios_data <- scenarios_data %>% dplyr::mutate(
   technology_type = dplyr::if_else(technology_type == "declining", "carbontech", "greentech"),
   scenario_type = dplyr::if_else(scenario_type == "shock", "target", scenario_type)
@@ -226,7 +231,7 @@ scenarios_data <- scenarios_data[, !names(scenarios_data) %in% c("fair_share_per
 
 # List of expected columns after renaming
 expected_columns <- c(
-  "scenario", "scenario_type", "scenario_geography", "sector", "technology",
+  "scenario", "scenario_provider", "scenario_type", "scenario_geography", "sector", "technology",
   "scenario_year", "price_unit", "price_indicator", "scenario_price",
   "pathway_unit", "scenario_pathway", "technology_type", "country_iso2_list"
 )

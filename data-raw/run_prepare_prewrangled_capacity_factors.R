@@ -68,7 +68,7 @@ data_weo23 <- readr::read_csv(
 prepared_data_WEO2023 <- prepare_prewrangled_capacity_factors_WEO2023(data_weo23, start_year = start_year)
 
 
-##NGFS--- read data
+##NGFS Phase 4
 input_path <- file.path("data-raw", "capacity_factors_data", "raw_capacity_factors_NGFSphase4.csv")
 
 data <- readr::read_csv(
@@ -91,6 +91,30 @@ data <- readr::read_csv(
 ## prepare data
 prepared_data_NGFS2023 <- prepare_capacity_factors_NGFS2023(data, start_year = start_year)
 
+
+##NGFS Phase 5
+input_path <- file.path("data-raw", "capacity_factors_data", "raw_capacity_factors_NGFSphase5.csv")
+
+data <- readr::read_csv(
+  input_path,
+  col_types = readr::cols(
+    Model = "c",
+    Scenario = "c",
+    Region = "c",
+    Variable = "c",
+    category_a = "c",
+    category_b = "c",
+    category_c = "c",
+    Unit = "c",
+    year = "d",
+    value = "d",
+    .default = readr::col_number()
+  )
+)
+
+## prepare data
+prepared_data_NGFS2024 <- prepare_capacity_factors_NGFS2024(data, start_year = start_year)
+
 ### IPR2023 data
 
 input_path <- fs::path("data-raw", "capacity_factors_data","raw_capacity_factors_IPR2023.csv")
@@ -112,7 +136,7 @@ data <- readr::read_csv(
 )
 
 ## prepare IPR data
-prepared_data_IPR2023 <- prepare_capacity_factors_IPR2023(data, start_year = start_year) %>% 
+prepared_data_IPR2023 <- prepare_capacity_factors_IPR2023(data, start_year = start_year) %>%
   dplyr::filter(.data$scenario_geography != "IND") # delete dulicated india geography
 
 ## IPR baseline CF is a duplicate of IPR2023_FPS
@@ -140,15 +164,18 @@ steel_cf <- readr::read_csv(
   )
 )
 
-prepared_data_steel <- prepare_capacity_factors_GEM_steel(steel_cf, start_year=start_year) 
+prepared_data_steel <- prepare_capacity_factors_GEM_steel(steel_cf, start_year=start_year)
 
 ## combine and write data
 prepared_data <- prepared_data_WEO2021 %>%
   dplyr::bind_rows(prepared_data_NGFS2023) %>%
+  dplyr::bind_rows(prepared_data_NGFS2024) %>%
   dplyr::bind_rows(prepared_data_IPR2023) %>%
   dplyr::bind_rows(prepared_data_OXF2021) %>%
   dplyr::bind_rows(prepared_data_steel) %>%
   dplyr::bind_rows(prepared_data_WEO2023)
+
+
 
 prepared_data %>%
   dplyr::rename(ald_business_unit=.data$technology) %>%

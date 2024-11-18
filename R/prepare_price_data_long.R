@@ -232,7 +232,7 @@ prepare_price_data_long_WEO2021 <- function(input_data_fossil_fuel,
   return(data)
 }
 
-#' This function reads raw NGFS price data files from 2021 in and wrangles
+#' This function reads raw NGFS price data files from Phase 4 in and wrangles
 #' it to fit the format to be used in the transition risk stress test work flow.
 #'
 #' @param input_data_fossil_fuels_ngfs A dataset containing prices for the fossil
@@ -304,6 +304,70 @@ prepare_price_data_long_NGFS2023 <- function(input_data_fossil_fuels_ngfs, start
     dplyr::rename(price = .data$value) %>%
     tidyr::unite("scenario", c(.data$model, .data$scenario), sep = "_") %>%
     dplyr::mutate(scenario = paste0("NGFS2023", .data$scenario))
+}
+
+### Preparing Price Data Long for NGFS Phase 5
+
+prepare_price_data_long_NGFS2024 <- function(input_data_fossil_fuels_ngfsv5, start_year) {
+  data <- input_data_fossil_fuels_ngfsv5 %>%
+    dplyr::mutate(scenario = .data$Scenario) %>%
+    dplyr::mutate(
+      scenario = dplyr::case_when(
+        .data$scenario == "Nationally Determined Contributions (NDCs)" ~ "NDC",
+        .data$scenario == "Below 2 C" ~ "B2DS",
+        .data$scenario == "Delayed transition" ~ "DT",
+        .data$scenario == "Current Policies" ~ "CP",
+        .data$scenario == "Divergent Net Zero" ~ "DN0",
+        .data$scenario == "Net Zero 2050" ~ "NZ2050",
+        .data$scenario == "Fragmented World" ~ "FW",
+        .data$scenario == "Low demand" ~ "LD",
+        TRUE ~ .data$scenario
+      ),
+      scenario_geography = dplyr::case_when(
+        .data$Region == "World" ~ "Global",
+        TRUE ~ .data$Region
+      ),
+      model = dplyr::case_when(
+        .data$Model == "GCAM 6.0 NGFS" ~ "GCAM",
+        .data$Model == "REMIND-MAgPIE 3.3-4.8" ~ "REMIND",
+        .data$Model == "MESSAGEix-GLOBIOM 2.0-M-R12-NGFS" ~ "MESSAGE",
+        TRUE ~ .data$Model
+      ),
+      sector = dplyr::case_when(
+        .data$category_c == "Oil" ~ "Oil&Gas",
+        .data$category_c == "Gas" ~ "Oil&Gas",
+        .data$category_c == "Coal" ~ "Coal",
+        TRUE ~ .data$category_c
+      )
+    ) %>%
+    dplyr::rename(unit = .data$Unit, technology = .data$category_c, indicator = .data$category_a) %>%
+    dplyr::select(-c(.data$Model, .data$Variable, .data$Scenario, .data$category_b, .data$Region))
+
+  data <- data %>%
+    dplyr::group_by(dplyr::across(-c(.data$year, .data$value))) %>%
+    tidyr::complete(year = tidyr::full_seq(.data$year, 1)) %>%
+    dplyr::mutate(
+      value = zoo::na.approx(.data$value, .data$year, na.rm = FALSE)
+    ) %>%
+    dplyr::ungroup()
+
+  data <- data %>% dplyr::filter(.data$year >= start_year) ##is this necessary?
+
+  data_oil_gas <- data %>%
+    dplyr::filter(.data$sector == "Oil&Gas") %>%
+    dplyr::mutate(unit = "$/GJ")
+
+  data_coal <- data %>%
+    dplyr::filter(.data$sector == "Coal") %>%
+    dplyr::group_by(.data$year, .data$scenario_geography, .data$model, .data$scenario) %>%
+    dplyr::mutate(value = .data$value / 0.03414368, unit = "$/tonnes")
+
+  data <- dplyr::full_join(data_oil_gas, data_coal)
+
+  data <- data %>%
+    dplyr::rename(price = .data$value) %>%
+    tidyr::unite("scenario", c(.data$model, .data$scenario), sep = "_") %>%
+    dplyr::mutate(scenario = paste("NGFS2024", .data$scenario, sep = "_"))
 }
 
 ### IPR price data function

@@ -602,7 +602,7 @@ preprepare_ngfs_scenario_data_v5 <- function(data) {
 
   data <- dplyr::full_join(combine_renewables_cap, delete_renewables) %>%
     tidyr::unite("scenario", c(.data$model, .data$scenario), sep = "_") %>%
-    dplyr::mutate(scenario = paste("NGFS2024", .data$scenario))
+    dplyr::mutate(scenario = paste0("NGFS2024", .data$scenario))
 }
 
 

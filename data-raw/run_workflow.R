@@ -1,6 +1,6 @@
 options(r2dii_dropbox=r2dii_dropbox)
 
-start_year <- 2022
+start_year <- 2023
 
 # OPEN SOURCE DATA
 
@@ -96,7 +96,7 @@ rm(list = ls()[ls() != c("country_filter", "start_year", "st_input_folder")])
 
 
 # ===== TRANSFORM INPUTS STRUCTURE FOR TRISK V2
- st_input_folder <- here::here("data-raw", "st_inputs") # TODO USE IN ALL OTHER SCRIPTS
+st_input_folder <- here::here("data-raw", "st_inputs") # TODO USE IN ALL OTHER SCRIPTS
 
 
 Scenarios_AnalysisInput <- readr::read_csv(file.path(st_input_folder, "Scenarios_AnalysisInput.csv"))
@@ -105,6 +105,8 @@ prewrangled_financial_data_stress_test <- readr::read_csv(file.path(st_input_fol
 price_data_long <- readr::read_csv(file.path(st_input_folder, "price_data_long.csv"))
 prewrangled_capacity_factors <- readr::read_csv(file.path(st_input_folder, "prewrangled_capacity_factors.csv"))
 bench_regions <- readr::read_rds("data-raw/bench_regions.rds")
+
+abcd_stress_test_input <- abcd_stress_test_input %>% filter(scenario_geography == "Global")
 
 # ASSETS DATA
 
@@ -119,8 +121,18 @@ assets_data$workforce_size <- NA                        # Initialize with NA
 
 # Rename the existing columns according to the mappings
 
+assets_data$technology <- assets_data$ald_business_unit
 if (!("asset_id"  %in% names(assets_data))){
-    assets_data$asset_id = assets_data$company_id
+  # Step 1: Create a unique ID for each combination of company_id and technology
+  unique_assets <- assets_data %>%
+    distinct(company_id, technology, country_iso2) %>%
+    arrange(company_id, technology, country_iso2) %>%
+    mutate(asset_id = paste0(company_id, "_", row_number()))
+
+  # Step 2: Join back to the original dataset to add the unique asset_id
+  assets_data <- assets_data %>%
+    left_join(unique_assets, by = c("company_id", "technology", "country_iso2"))
+
 }
 if ("scenario_geography" %in% names(assets_data)){
   assets_data <- assets_data |> 
@@ -130,7 +142,6 @@ if ("scenario_geography" %in% names(assets_data)){
 assets_data$asset_name <- assets_data$company_name
 assets_data$production_year <- assets_data$year
 assets_data$emission_factor <- assets_data$plan_emission_factor
-assets_data$technology <- assets_data$ald_business_unit
 assets_data$sector <- assets_data$ald_sector
 assets_data$production_unit <- assets_data$ald_production_unit
 
@@ -157,12 +168,12 @@ assets_data$production_unit <- assets_data$ald_production_unit
 # Drop the old columns that have been replaced
 assets_data <- assets_data[, !names(assets_data) %in% c("year", "ald_production_unit", "plan_emission_factor",
                                                         "ald_business_unit", "ald_sector", "plan_tech_prod",
-                                                        "emissions_factor_unit", "plan_sec_prod")]
+                                                        "emissions_factor_unit" )]
 # List of expected columns after renaming
 expected_columns <- c(
   "asset_id", "asset_name", "company_id", "company_name", "country_iso2",
-  "country_name", "plant_age_years", "workforce_size", "technology", "sector",
-  "capacity", "production_year", "capacity_factor", "production_unit", "emission_factor"
+  "country_name", "technology", "sector", "plant_age_years", "workforce_size", 
+  "capacity_factor" , "capacity" , "production_year", "production_unit", "emission_factor"
 )
 
 # Check if the dataframe has the expected columns
@@ -193,7 +204,9 @@ scenarios_data <- Scenarios_AnalysisInput %>%
 scenarios_data <- scenarios_data %>%
   filter(!is.null(country_iso2_list) | !(is.null(country_iso2_list) & (scenario_geography=="Global")))
 
-
+scenarios_data <- scenarios_data %>%
+  mutate(capacity_factor = if_else(is.na(capacity_factor), 1, capacity_factor))
+scenarios_data$scenario_capacity_factor = scenarios_data$capacity_factor
 # Rename the existing columns according to the mappings
 scenarios_data$sector <- scenarios_data$ald_sector
 scenarios_data$technology <- scenarios_data$ald_business_unit
@@ -204,14 +217,14 @@ scenarios_data$pathway_unit <- scenarios_data$units
 
 scenarios_data$technology_type <- scenarios_data$direction
 
-  # 2. Apply capacity factors
-  hours_to_year <- 24 * 365
-scenarios_data <- scenarios_data %>% dplyr::mutate(
-  scenario_pathway = ifelse(.data$sector == "Power",
-    .data$scenario_pathway * .data$capacity_factor * .env$hours_to_year,
-    .data$scenario_pathway * .data$capacity_factor
-  )
-)
+#   # 2. Apply capacity factors
+#   hours_to_year <- 24 * 365
+# scenarios_data <- scenarios_data %>% dplyr::mutate(
+#   scenario_pathway = ifelse(.data$sector == "Power",
+#     .data$scenario_pathway * .data$capacity_factor * .env$hours_to_year,
+#     .data$scenario_pathway * .data$capacity_factor
+#   )
+# )
 
 # add scenario provider column
  scenarios_data <- scenarios_data |>
@@ -227,12 +240,12 @@ scenarios_data <- scenarios_data %>% dplyr::mutate(
 scenarios_data$price_indicator <- NA                           # Initialize with NA (missing in the provided data)
 
 # Drop the old columns that have been replaced
-scenarios_data <- scenarios_data[, !names(scenarios_data) %in% c("fair_share_perc","ald_sector", "ald_business_unit", "year", "price", "unit", "units", "capacity_factor", "direction", "indicator", "scenario_capacity_factor", "capacity_factor_unit")]
+scenarios_data <- scenarios_data[, !names(scenarios_data) %in% c("fair_share_perc","ald_sector", "ald_business_unit", "year", "price", "unit", "units", "capacity_factor", "direction", "indicator", "capacity_factor", "capacity_factor_unit", "price_indicator")]
 
 # List of expected columns after renaming
 expected_columns <- c(
   "scenario", "scenario_provider", "scenario_type", "scenario_geography", "sector", "technology",
-  "scenario_year", "price_unit", "price_indicator", "scenario_price",
+  "scenario_year", "price_unit", "scenario_price", "scenario_capacity_factor",
   "pathway_unit", "scenario_pathway", "technology_type", "country_iso2_list"
 )
 
@@ -245,7 +258,7 @@ scenarios_data <- scenarios_data %>% select_at(expected_columns)
 
 # WRITE V2 DATA
 
-st_inputs_v2_path <- fs::path("data-raw", "st_inputs_v2")
+st_inputs_v2_path <- fs::path("data-raw", "st_inputs_v2_post_refacto_2023")
 fs::dir_create(st_inputs_v2_path)
 
 scenarios_data %>% readr::write_csv(fs::path(st_inputs_v2_path, "scenarios.csv"))

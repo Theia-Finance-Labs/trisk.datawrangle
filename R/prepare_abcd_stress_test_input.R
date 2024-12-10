@@ -188,6 +188,24 @@ create_emissions_factor_ratio <- function(abcd_data) {
       )
     )
 
+  # match the MW production to tCO2/MWh emissions
+  # TODO Why forcing the use of MW for prod and tCO2/MWh while we can do all MW or all MWh ?
+  abcd_MW_prod <- abcd_data %>%
+    dplyr::filter(.data$ald_production_unit == "MW") %>%
+    dplyr::select(-.data$emissions_factor_unit, -.data$emissions_factor)%>% 
+    dplyr::distinct_all()
+  abcd_MWh_emissions <- abcd_data %>%
+    dplyr::filter(.data$ald_production_unit == "MWh") %>%
+    dplyr::select(-.data$ald_production_unit, -.data$ald_production)%>% 
+    dplyr::distinct_all()
+  abcd_MW_prod_MWh_emissions <-
+    dplyr::inner_join(abcd_MW_prod, abcd_MWh_emissions)
+  abcd_data <- dplyr::bind_rows(
+    abcd_data %>%
+      dplyr::filter(!.data$ald_production_unit %in% c("MW", "MWh")),
+    abcd_MW_prod_MWh_emissions
+  )
+
   return(abcd_data)
 }
 
@@ -346,8 +364,7 @@ prepare_abcd_data <- function(company_activities,
 
   ## DATALOAD
   abcd_data <-
-    match_emissions_to_production(company_activities, company_emissions) %>%
-    dplyr::filter(!(.data$ald_production_unit == "MW"))
+    match_emissions_to_production(company_activities, company_emissions) 
 
     abcd_data <- abcd_data %>%
       dplyr::filter(!is.na(.data$ald_location)) %>%

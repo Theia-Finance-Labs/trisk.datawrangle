@@ -57,3 +57,8 @@ data-raw/synthetic_inputs
 data-raw/datalake_inputs/*
 data-raw/financial_data_oldinputs/*
 data-raw/st_inputs_v2/*
+data-raw/st_inputs_v2_legacy/*
+data-raw/st_inputs_v2_legacy_prod/*
+data-raw/st_inputs_legacy/*
+data-raw/st_inputs_legacy_prod/*
+data-raw/st_inputs_v2_legacy_countries/*

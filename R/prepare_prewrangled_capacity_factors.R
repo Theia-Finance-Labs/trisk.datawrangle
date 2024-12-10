@@ -724,7 +724,7 @@ prepare_capacity_factors_GEM_steel <- function(data, start_year, max_year=2050){
     dplyr::mutate(technology = "DRI-BOF")
 
   bf_ohf <- data %>%
-    dplyr::filter(.data$technology == "OHF") %>%
+    dplyr::filter(.data$technology == "OHF Steel") %>%
     dplyr::mutate(technology = "BF-OHF")
 
 
@@ -753,7 +753,7 @@ prepare_capacity_factors_GEM_steel <- function(data, start_year, max_year=2050){
 
   # filtering for only relevant technologies
   data <- data %>%
-    dplyr::filter(.data$technology %in% c("BF-BOF", "BF-EAF", "EAF", "BOF", "DRI-EAF", "DRI-BF", "BF-OHF"))
+    dplyr::filter(.data$technology %in% c("BF-BOF", "BF-EAF", "EAF", "BOF", "DRI-EAF", "DRI-BOF", "BF-OHF"))
 
   #renaming value column
   data <- data %>%

@@ -106,7 +106,7 @@ price_data_long <- readr::read_csv(file.path(st_input_folder, "price_data_long.c
 prewrangled_capacity_factors <- readr::read_csv(file.path(st_input_folder, "prewrangled_capacity_factors.csv"))
 bench_regions <- readr::read_rds("data-raw/bench_regions.rds")
 
-abcd_stress_test_input <- abcd_stress_test_input %>% filter(scenario_geography == "Global")
+# abcd_stress_test_input <- abcd_stress_test_input %>% filter(scenario_geography == "Global")
 
 # ASSETS DATA
 
@@ -258,7 +258,7 @@ scenarios_data <- scenarios_data %>% select_at(expected_columns)
 
 # WRITE V2 DATA
 
-st_inputs_v2_path <- fs::path("data-raw", "st_inputs_v2_post_refacto_2023")
+st_inputs_v2_path <- fs::path("data-raw", "st_inputs_v2_steel_adj")
 fs::dir_create(st_inputs_v2_path)
 
 scenarios_data %>% readr::write_csv(fs::path(st_inputs_v2_path, "scenarios.csv"))

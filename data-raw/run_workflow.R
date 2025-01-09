@@ -1,3 +1,4 @@
+library(dplyr)
 options(r2dii_dropbox=r2dii_dropbox)
 
 start_year <- 2023
@@ -33,12 +34,11 @@ st_input_folder <- here::here("data-raw", "st_inputs") # TODO USE IN ALL OTHER S
 capacity_factors_power <- readr::read_csv(
   fs::path(st_input_folder, "prewrangled_capacity_factors.csv"))
 df_price <- readr::read_csv(
-  fs::path(st_input_folder, "price_data_long.csv")) %>% dplyr::select(-c(scenario_geography))
+  fs::path(st_input_folder, "price_data_long.csv")) %>% dplyr::select(-c(scenario_geography)) %>% dplyr::distinct_all()
 scenario_data <- readr::read_csv(
   fs::path(st_input_folder, "Scenarios_AnalysisInput.csv"))
 
 scenario_price <- scenario_data %>%
-
   dplyr::inner_join(
     df_price,
     by = c("scenario", "ald_sector", "ald_business_unit", "year"),
@@ -195,7 +195,7 @@ scenarios_data <- Scenarios_AnalysisInput %>%
   dplyr::left_join(prewrangled_capacity_factors,
                    by=c("scenario_geography", "scenario","ald_business_unit", "year")) %>%
   dplyr::inner_join(
-    price_data_long %>% dplyr::select(-c(scenario_geography)), 
+    price_data_long %>% dplyr::select(-c(scenario_geography)) %>% distinct_all(), 
     by=c("scenario", "ald_sector", "ald_business_unit", "year") ) |>
   dplyr::left_join(
     bench_regions_agg, 
@@ -252,7 +252,7 @@ expected_columns <- c(
 # Check if the dataframe has the expected columns
 actual_columns <- names(scenarios_data)
 
-stopifnot(all(expected_columns %in% names(scenarios_data)) && length(names(scenarios_data)) == length(expected_columns))
+stopifnot(all(expected_columns %in% actual_columns) && length(actual_columns) == length(expected_columns))
 
 scenarios_data <- scenarios_data %>% select_at(expected_columns)
 
@@ -282,117 +282,117 @@ readr::write_csv(fs::path(st_inputs_v2_path, "ngfs_carbon_price.csv"))
 
 
 
-# ===== TEST TRISK ON ALL COMBINATIONS OF SCENARIO/GEOGRAPHY
+# # ===== TEST TRISK ON ALL COMBINATIONS OF SCENARIO/GEOGRAPHY
 
-USE_MOCK_CLOSED_SOURCE <- TRUE
+# USE_MOCK_CLOSED_SOURCE <- TRUE
 
-if (USE_MOCK_CLOSED_SOURCE){
-  trisk_input_dir <- here::here("data-raw", "st_inputs_mock")
+# if (USE_MOCK_CLOSED_SOURCE){
+#   trisk_input_dir <- here::here("data-raw", "st_inputs_mock")
 
-  # Process and copy "Scenarios_AnalysisInput.csv"
-  readr::read_csv(file.path(st_input_folder, "Scenarios_AnalysisInput.csv")) %>%
-    readr::write_csv(file.path(trisk_input_dir, "Scenarios_AnalysisInput.csv"))
+#   # Process and copy "Scenarios_AnalysisInput.csv"
+#   readr::read_csv(file.path(st_input_folder, "Scenarios_AnalysisInput.csv")) %>%
+#     readr::write_csv(file.path(trisk_input_dir, "Scenarios_AnalysisInput.csv"))
 
-  # Process and copy "price_data_long.csv"
-  readr::read_csv(file.path(st_input_folder, "price_data_long.csv")) %>%
-    readr::write_csv(file.path(trisk_input_dir, "price_data_long.csv"))
+#   # Process and copy "price_data_long.csv"
+#   readr::read_csv(file.path(st_input_folder, "price_data_long.csv")) %>%
+#     readr::write_csv(file.path(trisk_input_dir, "price_data_long.csv"))
 
-  # Process and copy "prewrangled_capacity_factors.csv"
-  readr::read_csv(file.path(st_input_folder, "prewrangled_capacity_factors.csv")) %>%
-    readr::write_csv(file.path(trisk_input_dir, "prewrangled_capacity_factors.csv"))
-
-
-# Process and copy "ngfs_carbon_price.csv"
-readr::read_csv(file.path(st_input_folder, "ngfs_carbon_price.csv")) %>%
-  readr::write_csv(file.path(trisk_input_dir, "ngfs_carbon_price.csv"))
+#   # Process and copy "prewrangled_capacity_factors.csv"
+#   readr::read_csv(file.path(st_input_folder, "prewrangled_capacity_factors.csv")) %>%
+#     readr::write_csv(file.path(trisk_input_dir, "prewrangled_capacity_factors.csv"))
 
 
-
-} else {
-  trisk_input_dir <- here::here("data-raw", "st_inputs")
-}
-
-scenario_geography_x_ald_sector <- trisk.model::get_scenario_geography_x_ald_sector(
-  trisk_input_dir) |>
-  dplyr::distinct(.data$baseline_scenario, .data$shock_scenario, .data$scenario_geography)
-
-failed_perimeters <- list()
-for (i in 1:nrow(scenario_geography_x_ald_sector)) {
-  row_params <- scenario_geography_x_ald_sector[i, ]
-  tryCatch({
-    suppressWarnings(suppressMessages(capture.output(
-      trisk.model::run_trisk(
-        input_path = trisk_input_dir,
-        output_path = tempdir(),
-        baseline_scenario = row_params$baseline_scenario,
-        shock_scenario = row_params$shock_scenario,
-        scenario_geography = row_params$scenario_geography
-      )
-    )))
-    # Uncomment if you want to print a success message
-    # cat(paste("Pass", row_params, "\n"))
-  },
-  error = function(e) {
-    message <- paste(e$message, e$parent[1]$message, sep = "; ")
-    cat(message)
-    cat(paste("Failed", row_params, "\n"))
-    # Append the error information to the failed_perimeters list in the global environment
-    failed_perimeters <<- c(failed_perimeters, list(cbind(row_params, Error = message)))
-    NULL
-  })
-}
-
-# Optionally, you can save the failed perimeters to a CSV file after the loop
-if (length(failed_perimeters) > 0) {
-  failed_df <- do.call(rbind, failed_perimeters)
-  readr::write_csv(failed_df, fs::path(trisk_input_dir, "failed_perimeters.csv"))
-}
+# # Process and copy "ngfs_carbon_price.csv"
+# readr::read_csv(file.path(st_input_folder, "ngfs_carbon_price.csv")) %>%
+#   readr::write_csv(file.path(trisk_input_dir, "ngfs_carbon_price.csv"))
 
 
-failed_df <- readr::read_csv("data-raw/st_inputs_mock/failed_perimeters.csv")
 
-# ===== REMOVE FAILED PERIMETERS
-app_data_dir <- file.path("data-raw", "st_inputs_app")
+# } else {
+#   trisk_input_dir <- here::here("data-raw", "st_inputs")
+# }
 
-# Process and copy "Scenarios_AnalysisInput.csv"
-readr::read_csv(file.path(st_input_folder, "Scenarios_AnalysisInput.csv")) %>%
-    dplyr::anti_join(failed_df %>% dplyr::select(baseline_scenario, shock_scenario, scenario_geography)) %>%
-  readr::write_csv(file.path(app_data_dir, "Scenarios_AnalysisInput.csv"))
+# scenario_geography_x_ald_sector <- trisk.model::get_scenario_geography_x_ald_sector(
+#   trisk_input_dir) |>
+#   dplyr::distinct(.data$baseline_scenario, .data$shock_scenario, .data$scenario_geography)
 
-# Process and copy "price_data_long.csv"
-readr::read_csv(file.path(st_input_folder, "price_data_long.csv")) %>%
-    dplyr::anti_join(failed_df %>% dplyr::select(baseline_scenario, shock_scenario, scenario_geography)) %>%
-  readr::write_csv(file.path(app_data_dir, "price_data_long.csv"))
+# failed_perimeters <- list()
+# for (i in 1:nrow(scenario_geography_x_ald_sector)) {
+#   row_params <- scenario_geography_x_ald_sector[i, ]
+#   tryCatch({
+#     suppressWarnings(suppressMessages(capture.output(
+#       trisk.model::run_trisk(
+#         input_path = trisk_input_dir,
+#         output_path = tempdir(),
+#         baseline_scenario = row_params$baseline_scenario,
+#         shock_scenario = row_params$shock_scenario,
+#         scenario_geography = row_params$scenario_geography
+#       )
+#     )))
+#     # Uncomment if you want to print a success message
+#     # cat(paste("Pass", row_params, "\n"))
+#   },
+#   error = function(e) {
+#     message <- paste(e$message, e$parent[1]$message, sep = "; ")
+#     cat(message)
+#     cat(paste("Failed", row_params, "\n"))
+#     # Append the error information to the failed_perimeters list in the global environment
+#     failed_perimeters <<- c(failed_perimeters, list(cbind(row_params, Error = message)))
+#     NULL
+#   })
+# }
 
-# Process and copy "prewrangled_capacity_factors.csv"
-readr::read_csv(file.path(st_input_folder, "prewrangled_capacity_factors.csv")) %>%
-    dplyr::anti_join(failed_df %>% dplyr::select(baseline_scenario, shock_scenario, scenario_geography)) %>%
-  readr::write_csv(file.path(app_data_dir, "prewrangled_capacity_factors.csv"))
+# # Optionally, you can save the failed perimeters to a CSV file after the loop
+# if (length(failed_perimeters) > 0) {
+#   failed_df <- do.call(rbind, failed_perimeters)
+#   readr::write_csv(failed_df, fs::path(trisk_input_dir, "failed_perimeters.csv"))
+# }
 
-# Process and copy "ngfs_carbon_price.csv"
-readr::read_csv(file.path(st_input_folder, "ngfs_carbon_price.csv")) %>%
-    dplyr::anti_join(failed_df %>% dplyr::select(baseline_scenario, shock_scenario, scenario_geography)) %>%
-  readr::write_csv(file.path(app_data_dir, "ngfs_carbon_price.csv"))
 
-# ===== SAVE TO DROPBOX
+# failed_df <- readr::read_csv("data-raw/st_inputs_mock/failed_perimeters.csv")
 
-# RUN THE ABCD SAMPLING SCRIPT FIRST IF THE DATA IS UPLOADED TO THE APP (data-raw/sampling_scripts/sample_abcd_input.Rmd)
+# # ===== REMOVE FAILED PERIMETERS
+# app_data_dir <- file.path("data-raw", "st_inputs_app")
 
-# Save data to dropbox only if no filter applied
-if (length(country_filter) == 0) {
-  for (fp in c(
-    "abcd_stress_test_input.csv",
-    "prewrangled_financial_data_stress_test.csv",
-    "Scenarios_AnalysisInput.csv",
-    "prewrangled_capacity_factors.csv",
-    "price_data_long.csv",
-    "ngfs_carbon_price.csv"
-    )){
+# # Process and copy "Scenarios_AnalysisInput.csv"
+# readr::read_csv(file.path(st_input_folder, "Scenarios_AnalysisInput.csv")) %>%
+#     dplyr::anti_join(failed_df %>% dplyr::select(baseline_scenario, shock_scenario, scenario_geography)) %>%
+#   readr::write_csv(file.path(app_data_dir, "Scenarios_AnalysisInput.csv"))
 
-    readr::write_csv(
-      readr::read_csv(here::here("data-raw", "st_inputs", fp)),
-      r2dii.utils::path_dropbox_2dii(fs::path("ST Inputs", "ST_INPUTS_MASTER", fp))
-    )
+# # Process and copy "price_data_long.csv"
+# readr::read_csv(file.path(st_input_folder, "price_data_long.csv")) %>%
+#     dplyr::anti_join(failed_df %>% dplyr::select(baseline_scenario, shock_scenario, scenario_geography)) %>%
+#   readr::write_csv(file.path(app_data_dir, "price_data_long.csv"))
 
-  }
-}
+# # Process and copy "prewrangled_capacity_factors.csv"
+# readr::read_csv(file.path(st_input_folder, "prewrangled_capacity_factors.csv")) %>%
+#     dplyr::anti_join(failed_df %>% dplyr::select(baseline_scenario, shock_scenario, scenario_geography)) %>%
+#   readr::write_csv(file.path(app_data_dir, "prewrangled_capacity_factors.csv"))
+
+# # Process and copy "ngfs_carbon_price.csv"
+# readr::read_csv(file.path(st_input_folder, "ngfs_carbon_price.csv")) %>%
+#     dplyr::anti_join(failed_df %>% dplyr::select(baseline_scenario, shock_scenario, scenario_geography)) %>%
+#   readr::write_csv(file.path(app_data_dir, "ngfs_carbon_price.csv"))
+
+# # ===== SAVE TO DROPBOX
+
+# # RUN THE ABCD SAMPLING SCRIPT FIRST IF THE DATA IS UPLOADED TO THE APP (data-raw/sampling_scripts/sample_abcd_input.Rmd)
+
+# # Save data to dropbox only if no filter applied
+# if (length(country_filter) == 0) {
+#   for (fp in c(
+#     "abcd_stress_test_input.csv",
+#     "prewrangled_financial_data_stress_test.csv",
+#     "Scenarios_AnalysisInput.csv",
+#     "prewrangled_capacity_factors.csv",
+#     "price_data_long.csv",
+#     "ngfs_carbon_price.csv"
+#     )){
+
+#     readr::write_csv(
+#       readr::read_csv(here::here("data-raw", "st_inputs", fp)),
+#       r2dii.utils::path_dropbox_2dii(fs::path("ST Inputs", "ST_INPUTS_MASTER", fp))
+#     )
+
+#   }
+# }

@@ -925,13 +925,13 @@ prepare_OXF_scenario_data <- function(data, start_year) {
       fair_share_perc = dplyr::if_else(.data$direction == "declining", .data$tmsr, .data$smsp),
       tmsr = NULL,
       smsp = NULL,
-      value = NULL
     )
 
   data <- data[, c(
     "scenario_geography", "scenario", "ald_sector", "technology", "units", "year",
-    "direction", "fair_share_perc"
+    "direction", "fair_share_perc", "value"
   )]
+  return(data)
 }
 
 ## Prepare Steel Scenario Data

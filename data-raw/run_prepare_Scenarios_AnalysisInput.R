@@ -323,7 +323,7 @@ OXF <- as.data.frame(readr::read_csv(
   )
 ))
 prepared_OXF_data <- prepare_OXF_scenario_data(OXF,
-                                               start_year = start_year)
+                                               start_year = start_year) %>%dplyr::rename(scenario_pathway=value)
 
 
 ## Mission Possible Steel Scenarios

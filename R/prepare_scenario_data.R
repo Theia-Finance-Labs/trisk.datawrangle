@@ -418,7 +418,7 @@ prepare_geco2023 <- function(data) {
   data <- data %>%
     dplyr::select(-.data$scenario_source) %>%
     dplyr::mutate(scenario_geography = ifelse(.data$scenario_geography == "World", "Global", .data$scenario_geography))
-    
+
 }
 
 
@@ -957,25 +957,22 @@ prepare_steel_scenario_data <- function(data, start_year, max_year=2050) {
   # rename  specified technologies
   data_renamed <- data %>%
     dplyr:: mutate(technology = dplyr::case_when(
-      .data$technology == "Avg BF-BOF" ~ "BOF-BF",
-      .data$technology == "DRI-Melt-BOF" ~ "BOF-DRI",
-      .data$technology == "DRI-EAF" ~ "EAF-DRI",
+      .data$technology == "Avg BF-BOF" ~ "BF-BOF",
+      .data$technology == "DRI-Melt-BOF" ~ "DRI-BOF",
+      .data$technology == "DRI-EAF" ~ "DRI-EAF",
       TRUE ~ technology
     ))
 
-  # duplicate rows for "EAF" and rename the technology accordingly
-  data <- data_renamed %>%
-    # Identify rows with "EAF" technology
+  # Filter rows where technology is "EAF" and duplicate with renamed technology "BF-EAF"
+  eaf_to_bf_eaf <- data_renamed %>%
     dplyr::filter(.data$technology == "EAF") %>%
-    # Duplicate each row 3 times, setting technology to EAF-BF, EAF-OHF, and EAF-MM for each duplicate
-    tidyr::uncount(3) %>%
-    dplyr::mutate(technology = dplyr::case_when(
-      dplyr::row_number() %% 3 == 1 ~ "EAF-BF",
-      dplyr::row_number() %% 3 == 2 ~ "EAF-OHF",
-      TRUE ~ "EAF-MM"
-    )) %>%
-    # Bind the modified rows back to the original dataset, excluding the original "EAF" rows
-    dplyr::bind_rows(data_renamed %>% dplyr::filter(.data$technology != "EAF"))
+    dplyr::mutate(technology = "BF-EAF")
+
+
+  # Combine the modified datasets back with the original
+  data <- data_renamed %>%
+    dplyr::bind_rows(eaf_to_bf_eaf)
+
 
   ## some technologies "BOF_BF" have NAs in the last years, presumable beause the value goes to 0
   ## replacing NAs for these technologies with 0
@@ -1006,15 +1003,28 @@ prepare_steel_scenario_data <- function(data, start_year, max_year=2050) {
 
   # Prepare the replacement value
   replacement_value <- data %>%
-    dplyr::filter(.data$year == 2026, .data$technology == "BOF-DRI") %>%
+    dplyr::filter(.data$year == 2026, .data$technology == "DRI-BOF") %>%
     dplyr::select(.data$scenario, value_2026 = .data$value) %>%
     dplyr::distinct()
 
   data <- data %>%
     dplyr::left_join(replacement_value, by = "scenario") %>%
-    dplyr::mutate(value = dplyr::if_else(.data$technology == "BOF-DRI" & is.na(.data$value) & !is.na(.data$value_2026), .data$value_2026, .data$value)) %>%
+    dplyr::mutate(value = dplyr::if_else(.data$technology == "DRI-BOF" & is.na(.data$value) & !is.na(.data$value_2026), .data$value_2026, .data$value)) %>%
     dplyr::select(-.data$value_2026) # Clean up, remove the helper column
 
+  ##add missing technologies in BOF
+  # Filter rows where technology is "BF-BOF" and rename to "BOF"
+  bf_bof_to_bof <- data %>%
+    dplyr::filter(.data$technology == "BF-BOF") %>%
+    dplyr::mutate(technology = "BOF")
+
+  # Filter rows where technology is "BF-BOF" and rename to "BF-OHF"
+  bf_bof_to_bf_ohf <- data %>%
+    dplyr::filter(.data$technology == "BF-BOF") %>%
+    dplyr::mutate(technology = "BF-OHF")
+
+  data <- data %>%
+    dplyr::bind_rows(bf_bof_to_bof, bf_bof_to_bf_ohf)
 
   # calculate tmsr smsp
   # I advice against smsp for steel, since it is quite the signficant adjustment and I am unsure about the feasibility of
@@ -1042,8 +1052,8 @@ prepare_steel_scenario_data <- function(data, start_year, max_year=2050) {
 
   # Select and rearrange columns
   data <- data %>%
-    dplyr::select(.data$scenario_geography, .data$scenario, .data$ald_sector, .data$technology, .data$units, .data$year, .data$direction, .data$fair_share_perc, .data$value)
-    # %>%dplyr::rename(scenario_pathway=.data$value)
+    dplyr::select(.data$scenario_geography, .data$scenario, .data$ald_sector, .data$technology, .data$units, .data$year, .data$direction, .data$fair_share_perc, .data$value) %>%
+    dplyr::rename(scenario_pathway=.data$value)
 
   # Rename scenarios
   data <- data %>%

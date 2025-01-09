@@ -154,6 +154,7 @@ prepared_data_OXF2021 <- prepare_capacity_factors_OXF2021(prepared_data_WEO2021)
 input_path_steel <- file.path("data-raw", "capacity_factors_data", "preprocessed_capacity_factors_GEM_Steel.csv")
 
 # Steel CF based on the GEM database for 2021 capacity and production of steel
+
 steel_cf <- readr::read_csv(
   input_path_steel,
   col_types = readr::cols(
@@ -163,6 +164,11 @@ steel_cf <- readr::read_csv(
     .default = readr::col_number()
   )
 )
+
+# Update: we stop using GEM capcacity factors, but for technical reasons
+# we still need placeholder values
+# Hence we change the values to 1
+steel_cf$value <- 1
 
 prepared_data_steel <- prepare_capacity_factors_GEM_steel(steel_cf, start_year=start_year)
 

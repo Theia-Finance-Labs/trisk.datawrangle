@@ -353,25 +353,26 @@ MP_LC_steel_wrangling <- function(data) {
   # renaming technologies
   data <- data %>%
     dplyr::mutate(technology = dplyr::case_when(
-      .data$technology == "Avg BF-BOF" ~ "BOF-BF",
-      .data$technology == "DRI-Melt-BOF" ~ "BOF-DRI",
-      .data$technology == "DRI-EAF" ~ "EAF-DRI",
+      .data$technology == "Avg BF-BOF" ~ "BF-BOF",
+      .data$technology == "DRI-Melt-BOF" ~ "DRI-BOF",
+      .data$technology == "DRI-EAF" ~ "DRI-EAF",
       TRUE ~ technology
     ))
 
-  # duplicate rows for "EAF" and rename the technology accordingly
-  data <- data %>%
-    # Identify rows with "EAF" technology
-    dplyr::filter(.data$technology == "EAF") %>%
-    # Duplicate each row 3 times, setting technology to EAF-BF, EAF-OHF, and EAF-MM for each duplicate
-    tidyr::uncount(3) %>%
-    dplyr::mutate(technology = dplyr::case_when(
-      dplyr::row_number() %% 3 == 1 ~ "EAF-BF",
-      dplyr::row_number() %% 3 == 2 ~ "EAF-OHF",
-      TRUE ~ "EAF-MM"
-    )) %>%
-    # Bind the modified rows back to the original dataset, excluding the original "EAF" rows
-    dplyr::bind_rows(data %>% dplyr::filter(.data$technology != "EAF"))
+  # Extract rows where technology is "EAF" and rename to "BF-EAF"
+  eaf_rows <- data[data$technology == "EAF", ]
+  eaf_rows$technology <- "BF-EAF"
+
+  # Extract rows where technology is "BF-BOF" and rename to "BOF"
+  bof_rows <- data[data$technology == "BF-BOF", ]
+  bof_rows$technology <- "BOF"
+
+  # Extract rows where technology is "BF-BOF" again and rename to "BF-OHF"
+  ohf_rows <- data[data$technology == "BF-BOF", ]
+  ohf_rows$technology <- "BF-OHF"
+
+  # Combine all the extracted rows and the original dataset
+  data <- rbind(data, eaf_rows, bof_rows, ohf_rows)
 
   # adding columns
   data$sector <- "Steel"

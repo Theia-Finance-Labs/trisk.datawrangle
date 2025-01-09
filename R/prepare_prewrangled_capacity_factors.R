@@ -819,35 +819,41 @@ prepare_capacity_factors_GEM_steel <- function(data, start_year, max_year=2050){
   # Renaming BOF Steel directly
   data <- data %>%
     dplyr::mutate(technology = dplyr::case_when(
-      .data$technology == "BOF Steel" ~ "BOF-BF",
+      .data$technology == "BOF Steel" ~ "BOF",
       TRUE ~ technology
     ))
 
   # Step 2: Create duplicates for EAF Steel with three new names, and DRI with two new names
   eaf_bf <- data %>%
     dplyr::filter(.data$technology == "EAF Steel") %>%
-    dplyr::mutate(technology = "EAF-BF")
-
-  eaf_ohf <- data %>%
-    dplyr::filter(.data$technology == "EAF Steel") %>%
-    dplyr::mutate(technology = "EAF-OHF")
-
-  eaf_mm <- data %>%
-    dplyr::filter(.data$technology == "EAF Steel") %>%
-    dplyr::mutate(technology = "EAF-MM")
-
-  bof_dri <- data %>%
-    dplyr::filter(.data$technology == "DRI") %>%
-    dplyr::mutate(technology = "BOF-DRI")
+    dplyr::mutate(technology = "BF-EAF")
 
   eaf_dri <- data %>%
     dplyr::filter(.data$technology == "DRI") %>%
-    dplyr::mutate(technology = "EAF-DRI")
+    dplyr::mutate(technology = "DRI-EAF")
+
+  eaf <- data %>%
+    dplyr::filter(.data$technology == "EAF Steel") %>%
+    dplyr::mutate(technology = "EAF")
+
+  bof_bf <- data %>%
+    dplyr::filter(.data$technology == "BOF") %>%
+    dplyr::mutate(technology = "BF-BOF")
+
+  bof_dri <- data %>%
+    dplyr::filter(.data$technology == "DRI") %>%
+    dplyr::mutate(technology = "DRI-BOF")
+
+  bf_ohf <- data %>%
+    dplyr::filter(.data$technology == "OHF Steel") %>%
+    dplyr::mutate(technology = "BF-OHF")
+
+
 
   # Combining the new duplicated datasets back with the original, excluding original EAF Steel and DRI rows
   data <- data %>%
     dplyr::filter(!(.data$technology %in% c("EAF Steel", "DRI"))) %>%
-    dplyr::bind_rows(eaf_bf, eaf_ohf, eaf_mm, bof_dri, eaf_dri)
+    dplyr::bind_rows(eaf_bf, eaf,eaf_dri, bof_bf, bof_dri, bf_ohf)
 
   # Step 3: Duplicate all observations for the scenario column
   data <- data %>%
@@ -868,7 +874,7 @@ prepare_capacity_factors_GEM_steel <- function(data, start_year, max_year=2050){
 
   # filtering for only relevant technologies
   data <- data %>%
-    dplyr::filter(.data$technology %in% c("BOF-BF", "BOF-DRI", "EAF-BF", "EAF-DRI", "EAF-OHF", "EAF-MM"))
+    dplyr::filter(.data$technology %in% c("BF-BOF", "BF-EAF", "EAF", "BOF", "DRI-EAF", "DRI-BOF", "BF-OHF"))
 
   #renaming value column
   data <- data %>%

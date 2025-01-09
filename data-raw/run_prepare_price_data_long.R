@@ -169,11 +169,71 @@ price_data_long_NGFS2023 <- prepare_price_data_long_NGFS2023(
 lcoe_adjusted_price_data_oxford2021_2022 <- prepare_lcoe_adjusted_price_data_oxford2022(
   input_data_lcoe_oxford = input_data_lcoe_oxford,
   average_npm_power = average_npm_power,
-  start_year = start_year
+  start_year = start_year,
+  ngfs_vintage = 2023
 )
 
 price_data_long_adjusted_NGFS2023 <- price_data_long_NGFS2023 %>%
   dplyr::bind_rows(lcoe_adjusted_price_data_oxford2021_2022)
+
+
+# prepare price data NGFS2024 - Phase 5----
+## read input data
+
+input_path_fossil_fuels_ngfsv5 <- file.path("data-raw", "price_data_long_data", "raw_price_data_long_NGFSphase5.csv")
+
+input_data_fossil_fuels_ngfsv5 <- readr::read_csv(
+  input_path_fossil_fuels_ngfsv5,
+  col_types = readr::cols(
+    Model = "c",
+    Scenario = "c",
+    Region = "c",
+    Variable = "c",
+    category_a = "c",
+    category_b = "c",
+    category_c = "c",
+    Unit = "c",
+    year = "d",
+    value = "d",
+    .default = readr::col_number()
+  )
+)
+
+## NOTE.: NGFS uses LCOE price data Oxford2021
+input_path_lcoe_oxford <- file.path("data-raw", "price_data_long_data","raw_Oxford_LCOE_wrangled.csv")
+
+input_data_lcoe_oxford <- readr::read_delim(
+  file.path(input_path_lcoe_oxford),
+  col_types = readr::cols(
+    Scenario = "c",
+    Sector = "c",
+    Region = "c",
+    Technology = "c",
+    Sub_Technology = "c",
+    Year = "d",
+    LCOE = "d",
+    .default = readr::col_number()
+  )
+)
+
+price_data_long_NGFS2024 <- prepare_price_data_long_NGFS2024(
+  input_data_fossil_fuels_ngfsv5 = input_data_fossil_fuels_ngfsv5,
+  start_year = start_year
+)
+
+lcoe_adjusted_price_data_oxford2021_2022_ngfs2024 <- prepare_lcoe_adjusted_price_data_oxford2022(
+  input_data_lcoe_oxford = input_data_lcoe_oxford,
+  average_npm_power = average_npm_power,
+  start_year = start_year,
+  ngfs_vintage = 2024
+)
+
+price_data_long_adjusted_NGFS2024 <- price_data_long_NGFS2024 %>%
+  dplyr::bind_rows(lcoe_adjusted_price_data_oxford2021_2022_ngfs2024)
+
+
+
+
 
 
 ### prepare price data IPR 2023
@@ -285,10 +345,13 @@ auto_prices <- create_automotive_prices(Scenarios_AnalysisInput)
 price_data_long_adjusted <- price_data_long_adjusted_WEO2021 %>%
   dplyr::bind_rows(price_data_long_adjusted_WEO2023) %>%
   dplyr::bind_rows(price_data_long_adjusted_NGFS2023) %>%
+  dplyr::bind_rows(price_data_long_adjusted_NGFS2024) %>%
   dplyr::bind_rows(price_data_long_adjusted_IPR2023) %>%
   dplyr::bind_rows(price_data_long_adjusted_OXF2021) %>%
   dplyr::bind_rows(price_data_long_adjusted_MP_Steel) %>%
   dplyr::bind_rows(auto_prices)
+
+
 
 price_data_long_adjusted %>%
   dplyr::rename(ald_business_unit = .data$technology,

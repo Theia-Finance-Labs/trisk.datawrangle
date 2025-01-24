@@ -367,8 +367,9 @@ prepare_price_data_long_NGFS2024 <- function(input_data_fossil_fuels_ngfsv5, sta
   data <- data %>%
     dplyr::rename(price = .data$value) %>%
     tidyr::unite("scenario", c(.data$model, .data$scenario), sep = "_") %>%
-    dplyr::mutate(scenario = paste("NGFS2024", .data$scenario, sep = "_"))
+    dplyr::mutate(scenario = paste0("NGFS2024", .data$scenario))
 }
+
 
 ### IPR price data function
 

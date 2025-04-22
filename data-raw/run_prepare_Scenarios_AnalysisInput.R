@@ -432,7 +432,7 @@ prepared_data_combined <- prepared_data_combined %>%
       TRUE ~ NA_character_  # Assign NA for scenarios not in either list
     )
   ) %>%
-  assertr::verify(sum(is.na(scenario_type)) == 0)
+  assertr::verify(sum(is.na(.data$scenario_type)) == 0)
 
 prepared_data_combined %>%
   dplyr::rename(ald_business_unit=.data$technology) %>%

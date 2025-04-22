@@ -258,7 +258,7 @@ scenarios_data <- scenarios_data %>% select_at(expected_columns)
 
 # WRITE V2 DATA
 
-st_inputs_v2_path <- fs::path("data-raw", "st_inputs_v2_steel_adj")
+st_inputs_v2_path <- fs::path("data-raw", "st_inputs_v2_ngfsv5")
 fs::dir_create(st_inputs_v2_path)
 
 scenarios_data %>% readr::write_csv(fs::path(st_inputs_v2_path, "scenarios.csv"))

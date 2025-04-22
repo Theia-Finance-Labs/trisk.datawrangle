@@ -267,9 +267,9 @@ prepare_scenario_data_weo23 <- function(data) {
       "FairSharePerc"
     ) %in% colnames(data)
   )
-  
+
   stopifnot(data_has_expected_columns)
-  
+
   data <- data %>%
     dplyr::filter(
       (stringr::str_detect(.data$Source, "WEO2023") & .data$Indicator %in% c("Capacity", "Total energy supply")
@@ -299,12 +299,12 @@ prepare_scenario_data_weo23 <- function(data) {
       scenario = stringr::str_c(.data$scenario_source, .data$scenario, sep = "_")
     ) %>%
     dplyr::distinct_all()
-  
+
   # We use Only Global Region for now so no more wrangling needed
-  
+
   data <- data %>%
     dplyr::select(-.data$scenario_source)
-  
+
   return(data)
 }
 
@@ -323,10 +323,10 @@ prepare_scenario_data_weo23 <- function(data) {
       "FairSharePerc"
     ) %in% colnames(data)
   )
-  
+
   stopifnot(data_has_expected_columns)
 
-  
+
   # due to inconsistencies in the raw data across sources, we need to filter for
   # other Indicators in IEA scenarios than in GECO scenarios at least up until
   # WEO 2021 and GECO 2021. Please review once new scenarios are available
@@ -359,25 +359,25 @@ prepare_scenario_data_weo23 <- function(data) {
       scenario = stringr::str_c(.data$scenario_source, .data$scenario, sep = "_")
     ) %>%
     dplyr::distinct_all()
-  
+
   # removing sectors that are not supported by stress testing
   p4i_p4b_sector_technology_lookup_df <- p4i_p4b_sector_technology_lookup()
-  
+
   data <- data %>%
     dplyr::filter(.data$ald_sector %in% unique(p4i_p4b_sector_technology_lookup_df$sector_p4i))
-  
+
   data <- remove_incomplete_sectors(data)
-  
+
   data <- data %>%
     dplyr::select(-.data$scenario_source)
-  
+
   return(data)
 }
 
 
 #' Function reads GECO2023 raw automotive data and wrangles it into the
-#' required Format. 
-#'@param data The dataset to be processed. This should be a data frame that 
+#' required Format.
+#'@param data The dataset to be processed. This should be a data frame that
 #' includes the necessary columns for processing.
 #'
 #' @return A data frame with the processed GECO 2023 data.
@@ -385,7 +385,7 @@ prepare_scenario_data_weo23 <- function(data) {
 
 prepare_geco2023 <- function(data) {
   # renaming and wrangling
-  
+
   data<- data %>%
     dplyr::select(
       -c(
@@ -412,16 +412,17 @@ prepare_geco2023 <- function(data) {
       scenario = stringr::str_c(.data$scenario_source, .data$scenario, sep = "_")
     ) %>%
     dplyr::distinct_all()
-  
+
   # removing source column and renaming world into global
-  
+
   data <- data %>%
     dplyr::select(-.data$scenario_source) %>%
     dplyr::mutate(scenario_geography = ifelse(.data$scenario_geography == "World", "Global", .data$scenario_geography))
+
 }
 
 
-#' This function reads  NGFS raw scenario data as found in the dropbox
+#' This function reads  NGFS raw scenario data from Phase IV as found in the dropbox
 #' under "Processed Data" and wrangles it to fit the required format for the
 #' usual scenario analysis input routine.
 #'
@@ -521,6 +522,88 @@ style_ngfs <- function(data) {
       fair_share_perc = .data$FairSharePerc
     )
 
+}
+
+#' This function reads  NGFS raw scenario from Phase V
+
+preprepare_ngfs_scenario_data_v5 <- function(data) {
+
+  #scenario trajectory based on capacity or electricity. One has to be blocked out with
+  # a "#". For now we use capacity
+  #data <- data[!grepl("^Capacity\\|Electricity\\|", data$Variable), ]
+  data <- data[!grepl("^Secondary Energy\\|Electricity\\|", data$Variable), ]
+
+  #setting the vintage
+  vintage <- 2024
+
+  data <- data %>%
+    dplyr::mutate(scenario = .data$Scenario) %>%
+    dplyr::mutate(
+      scenario = dplyr::case_when(
+        .data$scenario == "Nationally Determined Contributions (NDCs)" ~ "NDC",
+        .data$scenario == "Below 2 C" ~ "B2DS",
+        .data$scenario == "Delayed transition" ~ "DT",
+        .data$scenario == "Current Policies" ~ "CP",
+        .data$scenario == "Divergent Net Zero" ~ "DN0",
+        .data$scenario == "Net Zero 2050" ~ "NZ2050",
+        .data$scenario == "Fragmented World" ~ "FW",
+        .data$scenario == "Low demand" ~ "LD",
+        TRUE ~ .data$scenario
+      ),
+      scenario_geography = dplyr::case_when(
+        .data$Region == "World" ~ "Global",
+        TRUE ~ .data$Region
+      ),
+      sector = dplyr::case_when(
+        .data$category_b == "Oil" ~ "Oil&Gas",
+        .data$category_b == "Gas" ~ "Oil&Gas",
+        .data$category_b == "Coal" ~ "Coal",
+        TRUE ~ "Power"
+      ),
+      technology = dplyr::case_when(
+        .data$category_b == "Oil" ~ "Oil",
+        .data$category_b == "Gas" ~ "Gas",
+        .data$category_b == "Coal" ~ "Coal",
+        .data$category_b == "Electricity" & .data$category_c == "Coal" ~ "CoalCap",
+        .data$category_b == "Electricity" & .data$category_c == "Gas" ~ "GasCap",
+        .data$category_b == "Electricity" & .data$category_c == "Hydro" ~ "HydroCap",
+        .data$category_b == "Electricity" & .data$category_c == "Nuclear" ~ "NuclearCap",
+        .data$category_b == "Electricity" & .data$category_c == "Oil" ~ "OilCap",
+        .data$category_b == "Electricity" & .data$category_c == "Solar" ~ "RenewablesCap",
+        .data$category_b == "Electricity" & .data$category_c == "Geothermal" ~ "RenewablesCap",
+        .data$category_b == "Electricity" & .data$category_c == "Biomass" ~ "RenewablesCap",
+        .data$category_b == "Electricity" & .data$category_c == "Wind" ~ "RenewablesCap",
+        TRUE ~ .data$category_c
+      ),
+      # Adding an extra condition of indicator. if we use production for the trajectory for the power sector
+      indicator = if_else(
+        sector == "Power" & grepl("^Capacity\\|Electricity\\|", Variable), "Capacity",
+        if_else(sector == "Power" & grepl("^Secondary Energy\\|Electricity\\|", Variable), "Production",
+                "Production")),
+      source = paste("NGFS", vintage, sep = ""),
+      model = dplyr::case_when(
+        .data$Model == "GCAM 6.0 NGFS" ~ "GCAM",
+        .data$Model == "REMIND-MAgPIE 3.3-4.8" ~ "REMIND",
+        .data$Model == "MESSAGEix-GLOBIOM 2.0-M-R12-NGFS" ~ "MESSAGE",
+        TRUE ~ .data$Model
+      )
+    ) %>%
+    dplyr::rename(units = .data$Unit) %>%
+    dplyr::ungroup() %>%  ##think it needs to be ungrouped here
+    dplyr::select(-c(.data$Model, .data$Variable, .data$Scenario, .data$category_c, .data$category_a, .data$category_b, .data$Region))
+
+
+  combine_renewables_cap <- data %>%
+    dplyr::filter(.data$technology == "RenewablesCap") %>%
+    dplyr::group_by(.data$year, .data$technology, .data$scenario_geography, .data$model, .data$scenario) %>%
+    dplyr::mutate(value = sum(.data$value)) %>%
+    unique()
+
+  delete_renewables <- data %>% dplyr::filter(!.data$technology == "RenewablesCap")
+
+  data <- dplyr::full_join(combine_renewables_cap, delete_renewables) %>%
+    tidyr::unite("scenario", c(.data$model, .data$scenario), sep = "_") %>%
+    dplyr::mutate(scenario = paste0("NGFS2024", .data$scenario))
 }
 
 
@@ -658,16 +741,16 @@ prepare_IPR_scenario_data2023 <- function(data, start_year) {
   data <- data %>%
     dplyr::mutate(
       direction = dplyr::if_else(.data$technology %in% green_techs, "increasing", "declining"),
-      fair_share_perc = dplyr::if_else(.data$direction == "declining", .data$tmsr, .data$smsp),
-      tmsr = NULL,
-      smsp = NULL,
-      value = NULL
+      fair_share_perc = dplyr::if_else(.data$direction == "declining", .data$tmsr, .data$smsp)
     )
 
   data <- data[, c(
     "scenario_geography", "scenario", "ald_sector", "technology", "units", "year",
-    "direction", "fair_share_perc"
-  )]
+    "direction", "fair_share_perc", "value"
+  )] %>%
+  dplyr::rename(
+    scenario_pathway=.data$value
+  )
 
   #limiting time horizon for IPR automotive until 2041, this is the maximum data we currently have from
   #the GECO2021 scenarios
@@ -699,9 +782,9 @@ prepare_IPR_baseline_scenario_automotive <- function(data) {
       "FairSharePerc"
     ) %in% colnames(data)
   )
-  
+
   stopifnot(data_has_expected_columns)
-  
+
   data <- data %>%
     dplyr::filter(
       !(stringr::str_detect(.data$Source, "GECO2021") & .data$Sector != "Automotive")
@@ -734,17 +817,17 @@ prepare_IPR_baseline_scenario_automotive <- function(data) {
       scenario = stringr::str_c(.data$scenario_source, .data$scenario, sep = "_")
     ) %>%
     dplyr::distinct_all()
-  
+
   data <- data %>%
     dplyr::select(-.data$scenario_source)
-  
+
   # final adjustment to IPR
   data <- data %>%
     dplyr::filter(.data$scenario == "GECO2021_CurPol") %>%
     dplyr::mutate(scenario = dplyr::case_when(
       .data$scenario == "GECO2021_CurPol" ~ "IPR2023Automotive_baseline"
     ))
-  
+
   return(data)
 }
 
@@ -842,23 +925,23 @@ prepare_OXF_scenario_data <- function(data, start_year) {
       fair_share_perc = dplyr::if_else(.data$direction == "declining", .data$tmsr, .data$smsp),
       tmsr = NULL,
       smsp = NULL,
-      value = NULL
     )
 
   data <- data[, c(
     "scenario_geography", "scenario", "ald_sector", "technology", "units", "year",
-    "direction", "fair_share_perc"
+    "direction", "fair_share_perc", "value"
   )]
+  return(data)
 }
 
 ## Prepare Steel Scenario Data
 prepare_steel_scenario_data <- function(data, start_year, max_year=2050) {
-  
+
   data <- data %>%
     dplyr::rename(value = "Production (Mt)") %>% # renaming
     dplyr::filter(.data$technology %in% c('Avg BF-BOF', 'DRI-Melt-BOF', 'EAF', 'DRI-EAF'))%>% # selecting relevant technologies
     dplyr::filter(.data$scenario %in% c('Baseline', 'Carbon Cost')) # selecting relevant scenarios
-  
+
   # creates rows for missing yearly observations
   data <- data %>%
     # Ensure the year column is treated as a numeric column
@@ -867,36 +950,33 @@ prepare_steel_scenario_data <- function(data, start_year, max_year=2050) {
     tidyr::complete(.data$scenario, .data$technology, year = start_year:max_year) %>%
     # arrange the dataset for easier reading
     dplyr::arrange(.data$scenario, .data$technology, .data$year)
-  
+
   data$scenario_geography <- "Global"
   data$sector <- "Steel"
-  
+
   # rename  specified technologies
   data_renamed <- data %>%
     dplyr:: mutate(technology = dplyr::case_when(
-      .data$technology == "Avg BF-BOF" ~ "BOF-BF",
-      .data$technology == "DRI-Melt-BOF" ~ "BOF-DRI",
-      .data$technology == "DRI-EAF" ~ "EAF-DRI",
+      .data$technology == "Avg BF-BOF" ~ "BF-BOF",
+      .data$technology == "DRI-Melt-BOF" ~ "DRI-BOF",
+      .data$technology == "DRI-EAF" ~ "DRI-EAF",
       TRUE ~ technology
     ))
-  
-  # duplicate rows for "EAF" and rename the technology accordingly
-  data <- data_renamed %>%
-    # Identify rows with "EAF" technology
+
+  # Filter rows where technology is "EAF" and duplicate with renamed technology "BF-EAF"
+  eaf_to_bf_eaf <- data_renamed %>%
     dplyr::filter(.data$technology == "EAF") %>%
-    # Duplicate each row 3 times, setting technology to EAF-BF, EAF-OHF, and EAF-MM for each duplicate
-    tidyr::uncount(3) %>%
-    dplyr::mutate(technology = dplyr::case_when(
-      dplyr::row_number() %% 3 == 1 ~ "EAF-BF",
-      dplyr::row_number() %% 3 == 2 ~ "EAF-OHF",
-      TRUE ~ "EAF-MM"
-    )) %>%
-    # Bind the modified rows back to the original dataset, excluding the original "EAF" rows
-    dplyr::bind_rows(data_renamed %>% dplyr::filter(.data$technology != "EAF"))
-  
+    dplyr::mutate(technology = "BF-EAF")
+
+
+  # Combine the modified datasets back with the original
+  data <- data_renamed %>%
+    dplyr::bind_rows(eaf_to_bf_eaf)
+
+
   ## some technologies "BOF_BF" have NAs in the last years, presumable beause the value goes to 0
   ## replacing NAs for these technologies with 0
-  
+
   data <- data %>%
     # Group by scenario and technology to treat each combination individually
     dplyr::group_by(.data$scenario, .data$technology) %>%
@@ -913,34 +993,47 @@ prepare_steel_scenario_data <- function(data, start_year, max_year=2050) {
     dplyr::select(-.data$last_value_year) %>%
     # Ungroup to remove the grouping structure
     dplyr::ungroup()
-  
+
   ##
   # BOF-DRI has missing values in the first years of the time series
   # I think for now assuming the first value as a constant for the previous NA is a reasonable approach
   # with this we can simulate the no growth trajectory we would have when we would use 0s and also create the reasonable growth trajectory
   # without using smsp--Using SMSP can heavily alter the results in this case, especially if a company has no production except in one technology
-  # (waiting for feedback from MP on this)  
-  
+  # (waiting for feedback from MP on this)
+
   # Prepare the replacement value
   replacement_value <- data %>%
-    dplyr::filter(.data$year == 2026, .data$technology == "BOF-DRI") %>%
+    dplyr::filter(.data$year == 2026, .data$technology == "DRI-BOF") %>%
     dplyr::select(.data$scenario, value_2026 = .data$value) %>%
     dplyr::distinct()
-  
+
   data <- data %>%
     dplyr::left_join(replacement_value, by = "scenario") %>%
-    dplyr::mutate(value = dplyr::if_else(.data$technology == "BOF-DRI" & is.na(.data$value) & !is.na(.data$value_2026), .data$value_2026, .data$value)) %>%
+    dplyr::mutate(value = dplyr::if_else(.data$technology == "DRI-BOF" & is.na(.data$value) & !is.na(.data$value_2026), .data$value_2026, .data$value)) %>%
     dplyr::select(-.data$value_2026) # Clean up, remove the helper column
-  
-  
+
+  ##add missing technologies in BOF
+  # Filter rows where technology is "BF-BOF" and rename to "BOF"
+  bf_bof_to_bof <- data %>%
+    dplyr::filter(.data$technology == "BF-BOF") %>%
+    dplyr::mutate(technology = "BOF")
+
+  # Filter rows where technology is "BF-BOF" and rename to "BF-OHF"
+  bf_bof_to_bf_ohf <- data %>%
+    dplyr::filter(.data$technology == "BF-BOF") %>%
+    dplyr::mutate(technology = "BF-OHF")
+
+  data <- data %>%
+    dplyr::bind_rows(bf_bof_to_bof, bf_bof_to_bf_ohf)
+
   # calculate tmsr smsp
-  # I advice against smsp for steel, since it is quite the signficant adjustment and I am unsure about the feasibility of 
+  # I advice against smsp for steel, since it is quite the signficant adjustment and I am unsure about the feasibility of
   # aggregating the sector like that
   # I assume now only tsmr
   data <- data %>%
     dplyr::filter(.data$year >= start_year) %>%
     add_market_share_columns(start_year = start_year)
-  
+
   # Adding a direction column
   # First iteration: I put all directions as decreasing and use tsmr for all
   # (decreasing only used to choose between tmsr and smsp and for carbon tax purposes)
@@ -948,19 +1041,20 @@ prepare_steel_scenario_data <- function(data, start_year, max_year=2050) {
   # for information: the decreasing techs are:
   # BOF-BF
   # EAF-DRI
-  
+
   data$direction <- "declining"
   data$units <- "Mt/yr"
-  
+
   data$fair_share_perc <- data$tmsr
-  
+
   data <- data %>%
     dplyr::rename(ald_sector = .data$sector)
-  
+
   # Select and rearrange columns
   data <- data %>%
-    dplyr::select(.data$scenario_geography, .data$scenario, .data$ald_sector, .data$technology, .data$units, .data$year, .data$direction, .data$fair_share_perc)
-  
+    dplyr::select(.data$scenario_geography, .data$scenario, .data$ald_sector, .data$technology, .data$units, .data$year, .data$direction, .data$fair_share_perc, .data$value) %>%
+    dplyr::rename(scenario_pathway=.data$value)
+
   # Rename scenarios
   data <- data %>%
     dplyr::mutate(scenario = dplyr::case_when(

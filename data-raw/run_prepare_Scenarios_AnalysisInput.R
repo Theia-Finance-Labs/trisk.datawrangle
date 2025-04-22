@@ -48,8 +48,8 @@ interpolation_groups <- c(
    )
  )
 
-# We use GECO2021 data for IPR2023 Automotive baseline and GECO2023 data for our 
-# usual GECO Automotive Scenarios. 
+# We use GECO2021 data for IPR2023 Automotive baseline and GECO2023 data for our
+# usual GECO Automotive Scenarios.
 # Todo: decouple GECO2021 from WEO routine
 #GECO2021 data from PACTA routine
  input_path <- fs::path(
@@ -198,8 +198,47 @@ preprepared_ngfs_data <- preprepared_ngfs_data %>% format_p4i(green_techs)
 
 preprepared_ngfs_data <- style_ngfs(preprepared_ngfs_data)
 
+#'NGFS Phase V
+#'
+
+input_path <- fs::path(
+  "data-raw",
+  "scenario_analysis_input_data",
+  "ngfs_Scenarios_AnalysisInput_phase5.csv"
+)
+
+ngfsv5_data <- readr::read_csv(
+  input_path,
+  col_types = readr::cols_only(
+    Model = "c",
+    Scenario = "c",
+    Region = "c",
+    Variable = "c",
+    category_a = "c",
+    category_b = "c",
+    category_c = "c",
+    Unit = "c",
+    year = "d",
+    value = "d"
+  )
+) %>%
+  dplyr::mutate(Scenario = gsub("°" , " ", .data$Scenario))
+
+preprepared_ngfsv5_data <- preprepare_ngfs_scenario_data_v5(ngfsv5_data)
+
+
+preprepared_ngfsv5_data <- preprepared_ngfsv5_data %>%
+  interpolate_yearly(!!!rlang::syms(interpolation_groups)) %>%
+  dplyr::filter(year >= start_year) %>%
+  add_market_share_columns(start_year = start_year)
+
+preprepared_ngfsv5_data <- preprepared_ngfsv5_data %>% format_p4i(green_techs)
+
+preprepared_ngfsv5_data <- style_ngfs(preprepared_ngfsv5_data)
+
+
 # replace nan fair_share_perc by 0. Nans appear when dividing per 0 in the tmsr computation
-preprepared_ngfs_data <- preprepared_ngfs_data %>%
+preprepared_ngfsv5_data <- preprepared_ngfsv5_data %>%
   dplyr::mutate(fair_share_perc = dplyr::if_else(is.na(fair_share_perc), 0, fair_share_perc))
 
 
@@ -244,7 +283,7 @@ ipr_automotive_baseline_data <- ipr_automotive_baseline_data %>%
   dplyr::filter(year >= start_year) %>%
   add_market_share_columns(start_year = start_year)
 
-# Different green tech categorization for the IPR baseline, based on IPR FPS 
+# Different green tech categorization for the IPR baseline, based on IPR FPS
 green_techs_ipr <- c("RenewablesCap", "HydroCap", "NuclearCap", "SolarCap", "OffWindCap", "OnWindCap", "BiomassCap",
                      "Electric", "FuelCell")
 
@@ -284,7 +323,7 @@ OXF <- as.data.frame(readr::read_csv(
   )
 ))
 prepared_OXF_data <- prepare_OXF_scenario_data(OXF,
-                                               start_year = start_year)
+                                               start_year = start_year) %>%dplyr::rename(scenario_pathway=value)
 
 
 ## Mission Possible Steel Scenarios
@@ -315,7 +354,7 @@ prepared_data_combined <- dplyr::full_join(prepared_data_IEA_NGFS, prepared_data
 prepared_data_combined <- dplyr::full_join(prepared_data_combined, prepared_geco23_data)
 prepared_data_combined <- dplyr::full_join(prepared_data_combined, prepared_steel_data)
 prepared_data_combined <- dplyr::full_join(prepared_data_combined, prepared_data_weo23)
-
+prepared_data_combined <- dplyr::full_join(prepared_data_combined, preprepared_ngfsv5_data)
 
 baseline_scenarios <- c(
   "WEO2021_STEPS",
@@ -332,6 +371,15 @@ baseline_scenarios <- c(
   "NGFS2023MESSAGE_NDC",
   "NGFS2023REMIND_NDC",
   "NGFS2023GCAM_NDC",
+  "NGFS2024GCAM_CP",
+  "NGFS2024MESSAGE_CP",
+  "NGFS2024REMIND_CP",
+  "NGFS2024MESSAGE_FW",
+  "NGFS2024REMIND_FW",
+  "NGFS2024GCAM_FW",
+  "NGFS2024MESSAGE_NDC",
+  "NGFS2024REMIND_NDC",
+  "NGFS2024GCAM_NDC",
   "IPR2023_baseline",
   "IPR2023Automotive_baseline",
   "Oxford2021_base",
@@ -358,6 +406,18 @@ shock_scenarios <- c(
     "NGFS2023GCAM_NZ2050",
     "NGFS2023MESSAGE_NZ2050",
     "NGFS2023REMIND_NZ2050",
+    "NGFS2024GCAM_B2DS",
+    "NGFS2024MESSAGE_B2DS",
+    "NGFS2024REMIND_B2DS",
+    "NGFS2024GCAM_LD",
+    "NGFS2024MESSAGE_LD",
+    "NGFS2024REMIND_LD",
+    "NGFS2024GCAM_DT",
+    "NGFS2024MESSAGE_DT",
+    "NGFS2024REMIND_DT",
+    "NGFS2024GCAM_NZ2050",
+    "NGFS2024MESSAGE_NZ2050",
+    "NGFS2024REMIND_NZ2050",
     "IPR2023_FPS",
     "IPR2023Automotive_FPS",
     "Oxford2021_fast",
@@ -372,7 +432,7 @@ prepared_data_combined <- prepared_data_combined %>%
       TRUE ~ NA_character_  # Assign NA for scenarios not in either list
     )
   ) %>%
-  assertr::verify(sum(is.na(scenario_type)) == 0)
+  assertr::verify(sum(is.na(.data$scenario_type)) == 0)
 
 prepared_data_combined %>%
   dplyr::rename(ald_business_unit=.data$technology) %>%

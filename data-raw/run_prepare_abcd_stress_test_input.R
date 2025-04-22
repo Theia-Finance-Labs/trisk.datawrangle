@@ -12,9 +12,9 @@ data(scenarios_geographies)
 # parameters ========================================
 path_ar_data_raw <-
   r2dii.utils::path_dropbox_2dii(
-    "ST_INPUTS",
+    "ST Inputs",
     "ST_INPUTS_PRODUCTION",
-    "AR-Company-Indicators_2022Q4.xlsx"
+    "AR-Company-Indicators_2023Q4.xlsx"
   )
 
 
@@ -97,5 +97,13 @@ abcd_stress_test_input <-
 
 abcd_stress_test_input %>% 
   assertr::verify(all(colSums(is.na(.)) == 0))
+
+
+
+abcd_stress_test_input <- abcd_stress_test_input %>%
+  group_by(company_id, company_name, ald_sector, ald_business_unit, country_iso2, 
+           ald_production_unit, emissions_factor_unit, asset_id, scenario_geography) %>%
+  filter(plan_tech_prod[year == min(year)] > 0) %>%
+  ungroup()
 
 abcd_stress_test_input %>% readr::write_csv(output_path_stress_test_input)

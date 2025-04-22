@@ -296,32 +296,6 @@ fill_partially_missing_values <- function(abcd_data) {
 
 
 
-#' rename columns, and sum ald_production over each company to create
-#' plan_sec_prod column
-#' @param abcd_data abcd_data
-#'
-create_plan_prod_columns <- function(abcd_data) {
-
-  abcd_data <- abcd_data %>%
-    dplyr::rename(
-      plan_tech_prod = .data$ald_production,
-      plan_emission_factor = .data$emissions_factor
-    )
-
-  abcd_data <- abcd_data %>%
-    dplyr::group_by(
-      .data$company_id,
-      .data$company_name,
-      .data$ald_sector,
-      .data$year,
-      .data$ald_location
-    ) %>%
-    dplyr::mutate(plan_sec_prod = sum(.data$plan_tech_prod, na.rm = TRUE)) %>%
-    dplyr::ungroup()
-
-  return(abcd_data)
-}
-
 #' Filter dataframe to keep only desired sectors
 #' @param abcd_data abcd_data
 #' @param sector_list list of sectors to keep
@@ -420,7 +394,11 @@ prepare_abcd_data <- function(company_activities,
 
   abcd_data <- drop_always_empty_production(abcd_data)
 
-  abcd_data <- create_plan_prod_columns(abcd_data)
+  abcd_data <- abcd_data %>%
+    dplyr::rename(
+      plan_tech_prod = .data$ald_production,
+      plan_emission_factor = .data$emissions_factor
+    )
 
   ## FILTERINGS
   abcd_data <-

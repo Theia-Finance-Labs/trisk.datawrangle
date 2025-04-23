@@ -558,12 +558,14 @@ preprepare_ngfs_scenario_data_v5 <- function(data) {
         .data$category_b == "Oil" ~ "Oil&Gas",
         .data$category_b == "Gas" ~ "Oil&Gas",
         .data$category_b == "Coal" ~ "Coal",
+        .data$category_b == "Cement" ~ "Cement", #adding cement
         TRUE ~ "Power"
       ),
       technology = dplyr::case_when(
         .data$category_b == "Oil" ~ "Oil",
         .data$category_b == "Gas" ~ "Gas",
         .data$category_b == "Coal" ~ "Coal",
+        .data$category_b == "Cement" ~ "Cement",
         .data$category_b == "Electricity" & .data$category_c == "Coal" ~ "CoalCap",
         .data$category_b == "Electricity" & .data$category_c == "Gas" ~ "GasCap",
         .data$category_b == "Electricity" & .data$category_c == "Hydro" ~ "HydroCap",

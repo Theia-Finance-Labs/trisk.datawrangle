@@ -766,4 +766,24 @@ create_automotive_prices <- function(Scenarios_AnalysisInput) {
   return(auto_prices)
 }
 
+#adding cement dummy functions to built the cement dummy price
+create_cement_prices <- function(Scenarios_AnalysisInput) {
+  cement_scenario_data <- Scenarios_AnalysisInput %>%
+    dplyr::filter(.data$ald_sector == "Cement") %>%
+    dplyr::distinct(.data$scenario,
+                    .data$ald_sector,
+                    .data$ald_business_unit,
+                    .data$scenario_geography,
+                    .data$year) %>%
+    dplyr::rename(technology = .data$ald_business_unit,
+                  sector = .data$ald_sector)
+
+  cement_prices <- cement_scenario_data %>%
+    dplyr::mutate(price = 1,
+                  indicator="price",
+                  unit="dummy")
+
+  return(cement_prices)
+}
+
 

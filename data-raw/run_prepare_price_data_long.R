@@ -331,15 +331,16 @@ steel_npm <- 0.06866203
 price_data_long_adjusted_MP_Steel <- prepare_lc_adjusted_price_data_steel(input_data=steel_lc_data, average_npm_steel = steel_npm, start_year = start_year)
 
 
-## prepare price data Automotive
+## prepare price data Automotive and Cement
 
-# scenarios with automotive sector are identified in the scenario file
+# scenarios with automotive/cement sector are identified in the scenario file
 Scenarios_AnalysisInput <- readr::read_csv(fs::path(
   "data-raw","st_inputs","Scenarios_AnalysisInput.csv"
 ))
 
 auto_prices <- create_automotive_prices(Scenarios_AnalysisInput)
-
+cement_prices <-  create_cement_prices(Scenarios_AnalysisInput
+                                       )
 ## combine and write all price data----
 
 price_data_long_adjusted <- price_data_long_adjusted_WEO2021 %>%
@@ -349,7 +350,9 @@ price_data_long_adjusted <- price_data_long_adjusted_WEO2021 %>%
   dplyr::bind_rows(price_data_long_adjusted_IPR2023) %>%
   dplyr::bind_rows(price_data_long_adjusted_OXF2021) %>%
   dplyr::bind_rows(price_data_long_adjusted_MP_Steel) %>%
-  dplyr::bind_rows(auto_prices)
+  dplyr::bind_rows(auto_prices)%>%
+  dplyr::bind_rows(cement_prices)
+
 
 
 
